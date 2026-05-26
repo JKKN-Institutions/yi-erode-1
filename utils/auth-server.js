@@ -4,15 +4,33 @@
 
 const ADMIN_EMAILS = ['krishnaveni_a@jkkn.ac.in', 'krishna.biochem85@gmail.com'];
 
+async function isSupabaseReachable() {
+  if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+    return false;
+  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return false;
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 800);
+    await fetch(url, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(id);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 export async function getServerRole() {
   const { cookies } = await import('next/headers');
   const cookieStore = await cookies();
 
   // 1. Check Supabase auth session
   try {
-    const { createClient } = await import('@/utils/supabase/server');
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (await isSupabaseReachable()) {
+      const { createClient } = await import('@/utils/supabase/server');
+      const supabase = await createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (user && !authError) {
       // User is logged in via Google
@@ -75,6 +93,7 @@ export async function getServerRole() {
         } 
       };
     }
+  }
   } catch (e) {
     console.error("Supabase server session check failed:", e);
   }

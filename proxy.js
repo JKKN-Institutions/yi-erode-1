@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
+import { updateSession } from '@/utils/supabase/middleware';
 
 export async function proxy(request) {
   try {
-    const { updateSession } = await import('@/utils/supabase/middleware');
     return await updateSession(request);
   } catch {
     return NextResponse.next();

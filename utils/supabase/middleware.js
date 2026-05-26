@@ -1,6 +1,23 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
+async function isSupabaseReachable() {
+  if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+    return false;
+  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return false;
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 800);
+    await fetch(url, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(id);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 export async function updateSession(request) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -28,9 +45,13 @@ export async function updateSession(request) {
   )
 
   // Refresh session if expired - required for Server Components
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  if (await isSupabaseReachable()) {
+    try {
+      await supabase.auth.getUser()
+    } catch (e) {
+      console.warn("Failed to get Supabase user in middleware:", e)
+    }
+  }
 
   return supabaseResponse
 }

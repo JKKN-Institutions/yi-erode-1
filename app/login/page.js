@@ -24,6 +24,13 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      document.cookie = `dev_role=admin; path=/; max-age=${60 * 60 * 24 * 30}`;
+      const mockUser = { name: 'Yi Administrator', email: 'admin@yierode.org', role: 'admin' };
+      document.cookie = `dev_user=${encodeURIComponent(JSON.stringify(mockUser))}; path=/; max-age=${60 * 60 * 24 * 30}`;
+      window.location.href = '/admin-dashboard';
+      return;
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -40,6 +47,14 @@ export default function LoginPage() {
     e.preventDefault();
     if (!learnerName.trim()) return;
     setIsLoading(true);
+    
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      document.cookie = `dev_role=student; path=/; max-age=${60 * 60 * 24 * 30}`;
+      const mockUser = { name: learnerName, email: 'learner@yierode.org', role: 'student' };
+      document.cookie = `dev_user=${encodeURIComponent(JSON.stringify(mockUser))}; path=/; max-age=${60 * 60 * 24 * 30}`;
+      window.location.href = '/student-dashboard';
+      return;
+    }
     
     try {
       // 1. Attempt Anonymous Sign In
