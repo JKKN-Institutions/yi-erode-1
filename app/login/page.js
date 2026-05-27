@@ -20,8 +20,6 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [learnerName, setLearnerName] = useState('');
-
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
@@ -39,43 +37,6 @@ export default function LoginPage() {
     });
     if (error) {
       console.error('Error logging in:', error.message);
-      setIsLoading(false);
-    }
-  };
-
-  const handleLearnerLogin = async (e) => {
-    e.preventDefault();
-    if (!learnerName.trim()) return;
-    setIsLoading(true);
-    
-    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
-      document.cookie = `dev_role=student; path=/; max-age=${60 * 60 * 24 * 30}`;
-      const mockUser = { name: learnerName, email: 'learner@yierode.org', role: 'student' };
-      document.cookie = `dev_user=${encodeURIComponent(JSON.stringify(mockUser))}; path=/; max-age=${60 * 60 * 24 * 30}`;
-      window.location.href = '/student-dashboard';
-      return;
-    }
-    
-    try {
-      // 1. Attempt Anonymous Sign In
-      const { data, error } = await supabase.auth.signInAnonymously();
-      
-      if (error) throw error;
-      
-      // 2. Set profile details explicitly using upsert
-      await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: learnerName,
-          pseudo_name: learnerName,
-          role: 'student',
-          updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-      
-      // 3. Force reload to update server layout state
-      window.location.href = '/student-dashboard';
-    } catch (err) {
-      console.error('Learner login error:', err);
-      alert('Could not join. Anonymous login may not be enabled in Supabase, or there is a network error.');
       setIsLoading(false);
     }
   };
@@ -133,44 +94,6 @@ export default function LoginPage() {
               </span>
             )}
           </button>
-        </div>
-
-        {/* Learner Quick Access */}
-        <div style={{ marginTop: '32px', padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>
-            Learner Access
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', textAlign: 'center' }}>
-            Enter your name below to join a session immediately.
-          </p>
-          <form onSubmit={handleLearnerLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input 
-              type="text" 
-              placeholder="Your Full Name" 
-              value={learnerName}
-              onChange={(e) => setLearnerName(e.target.value)}
-              required
-              className={styles.inputField}
-              style={{
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(0,0,0,0.2)',
-                color: '#fff',
-                fontSize: '14px',
-                outline: 'none',
-                width: '100%'
-              }}
-            />
-            <button 
-              type="submit" 
-              disabled={isLoading || !learnerName.trim()}
-              className="btn btn-primary"
-              style={{ padding: '12px', width: '100%', justifyContent: 'center' }}
-            >
-              {isLoading ? 'Joining...' : 'Enter as Learner'}
-            </button>
-          </form>
         </div>
 
         <div className={styles.features}>
@@ -257,3 +180,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
