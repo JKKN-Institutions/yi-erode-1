@@ -38,10 +38,14 @@ export default async function RootPage({ searchParams }) {
     redirect('/mentor-dashboard');
   }
 
+  if (role === 'student') {
+    redirect('/student-dashboard');
+  }
+
   if (role === 'school_coordinator') {
     redirect('/school-dashboard');
   }
 
-  // Everyone else (students, unassigned) goes to the login page first
+  // Everyone else (unassigned) goes to the login page
   redirect('/login');
 }

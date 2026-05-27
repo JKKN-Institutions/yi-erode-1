@@ -28,6 +28,7 @@ export function getDemoUser(role) {
     admin: { name: 'Yi Administrator', email: 'admin@yierode.org', role: 'admin' },
     mentor: { name: 'Shield Mentor', email: 'mentor@jkkn.edu', role: 'mentor' },
     school_coordinator: { name: 'School Coordinator', email: 'coordinator@school.edu', role: 'school_coordinator' },
+    student: { name: 'Yi Learner', email: 'learner@yierode.org', role: 'student' },
   };
   return users[role] || users.admin;
 }

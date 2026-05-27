@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getStudentData } from "@/utils/student-actions";
 
-export default function ChatRoom({ params }) {
-  const mentorId = params.mentorId;
+export default function ChatRoom() {
+  const { mentorId } = useParams();
   const [data, setData] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
