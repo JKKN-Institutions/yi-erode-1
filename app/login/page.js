@@ -1,23 +1,13 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { setDevRole } from '@/utils/auth';
 import { createClient } from '@/utils/supabase/client';
 import styles from './login.module.css';
 
-const devRoles = [
-  { id: 'admin', label: 'Admin (Dev)', icon: '🔐', desc: 'Preview admin dashboard', color: '#818cf8' },
-  { id: 'mentor', label: 'Mentor (Dev)', icon: '👤', desc: 'Preview mentor dashboard', color: '#34d399' },
-  { id: 'school_coordinator', label: 'Coordinator (Dev)', icon: '🏫', desc: 'Preview school dashboard', color: '#fbbf24' },
-  { id: 'student', label: 'Student (Dev)', icon: '🎓', desc: 'Preview student dashboard', color: '#6366f1' },
-];
+
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showDevMode, setShowDevMode] = useState(false);
-  const [selectedRole, setSelectedRole] = useState(null);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleGoogleLogin = async () => {
@@ -41,16 +31,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleDevLogin = (role) => {
-    setSelectedRole(role);
-    setDevRole(role);
-    setTimeout(() => {
-      if (role === 'admin') router.push('/admin-dashboard');
-      else if (role === 'mentor') router.push('/mentor-dashboard');
-      else if (role === 'student') router.push('/student-dashboard');
-      else router.push('/school-dashboard');
-    }, 500);
-  };
+
 
   return (
     <div className={styles.container}>
@@ -117,59 +98,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Dev Mode Toggle */}
-        <div style={{ textAlign: 'center' }}>
-          <button
-            onClick={() => setShowDevMode(!showDevMode)}
-            style={{
-              fontSize: '0.7rem',
-              color: '#444460',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              borderRadius: '6px',
-              transition: 'all 0.2s',
-            }}
-            onMouseOver={(e) => e.currentTarget.style.color = '#6366f1'}
-            onMouseOut={(e) => e.currentTarget.style.color = '#444460'}
-          >
-            {showDevMode ? '▲ Hide Dev Mode' : '◆ Dev Mode'}
-          </button>
 
-          {showDevMode && (
-            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {devRoles.map((role) => (
-                <button
-                  key={role.id}
-                  onClick={() => handleDevLogin(role.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.6rem 1rem',
-                    background: selectedRole === role.id ? `${role.color}15` : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${selectedRole === role.id ? role.color + '40' : 'rgba(255,255,255,0.06)'}`,
-                    borderRadius: '10px',
-                    color: 'rgba(255,255,255,0.7)',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
-                    transition: 'all 0.2s',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span>{role.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{role.label}</div>
-                    <div style={{ fontSize: '0.65rem', color: '#555570' }}>{role.desc}</div>
-                  </div>
-                  <span style={{ color: role.color, fontSize: '0.75rem' }}>→</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       <style jsx>{`
