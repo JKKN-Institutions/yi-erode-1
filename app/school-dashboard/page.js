@@ -11,7 +11,7 @@ export default function SchoolDashboard() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedGrade, setSelectedGrade] = useState('');
+  const [currentGradeView, setCurrentGradeView] = useState('8');
   const [addingGrade, setAddingGrade] = useState(false);
 
   useEffect(() => {
@@ -30,6 +30,9 @@ export default function SchoolDashboard() {
         setSchool(schoolData);
         setSessions(sessionsData);
         setGradeStatuses(gradeData);
+        if (schoolData?.grades && schoolData.grades.length > 0) {
+          setCurrentGradeView(schoolData.grades[0].toString());
+        }
       }
       setLoading(false);
     }
@@ -63,13 +66,12 @@ export default function SchoolDashboard() {
     );
   }
 
-  const handleAddGrade = async (e) => {
-    e.preventDefault();
-    if (!selectedGrade || !school?.id) return;
+  const handleActivateGrade = async (grade) => {
+    if (!grade || !school?.id) return;
     
     setAddingGrade(true);
     try {
-      const res = await addSchoolGrade(school.id, selectedGrade);
+      const res = await addSchoolGrade(school.id, grade);
       if (res.success) {
         const [schoolData, gradeData] = await Promise.all([
           getSchoolById(school.id),
@@ -77,13 +79,12 @@ export default function SchoolDashboard() {
         ]);
         setSchool(schoolData);
         setGradeStatuses(gradeData);
-        setSelectedGrade('');
       } else {
-        alert(`Error adding grade: ${res.error}`);
+        alert(`Error activating grade: ${res.error}`);
       }
     } catch (err) {
       console.error(err);
-      alert('Failed to add grade.');
+      alert('Failed to activate grade.');
     } finally {
       setAddingGrade(false);
     }
@@ -182,139 +183,137 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span>🎓</span> Grade-Specific Workflow
         </h3>
         
-        {selectableOptions.length > 0 ? (
-          <form onSubmit={handleAddGrade} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <select
-              value={selectedGrade}
-              onChange={(e) => setSelectedGrade(e.target.value)}
-              disabled={addingGrade}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                background: 'var(--bg-glass, rgba(255,255,255,0.03))',
-                border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
-                color: 'var(--text-primary, white)',
-                fontSize: '13px',
-                fontWeight: 600,
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="" style={{ background: '#1e1e2e', color: 'var(--text-secondary)' }}>Add Grade...</option>
-              {selectableOptions.map(opt => (
-                <option key={opt.value} value={opt.value} style={{ background: '#1e1e2e' }}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              disabled={!selectedGrade || addingGrade}
-              className="btn btn-primary btn-sm"
-              style={{
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                height: '35px',
-              }}
-            >
-              {addingGrade ? 'Adding...' : 'Add Grade'}
-            </button>
-          </form>
-        ) : (
-          <span style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', background: 'var(--bg-glass)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-             All Grades Active (8-12)
-          </span>
-        )}
+        {/* Grade Selector Dropdown */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>Select Grade:</span>
+          <select
+            value={currentGradeView}
+            onChange={(e) => setCurrentGradeView(e.target.value)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: 'var(--bg-glass, rgba(255,255,255,0.03))',
+              border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))',
+              color: 'var(--text-primary, white)',
+              fontSize: '14px',
+              fontWeight: 600,
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {gradeOptions.map(opt => (
+              <option key={opt.value} value={opt.value} style={{ background: '#1e1e2e' }}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
-        gap: '20px',
-        animation: 'fadeInUp 0.5s ease-out 0.2s both'
-      }}>
-        {participatingGrades.map((grade) => {
-          const statusEntry = gradeStatuses.find(gs => gs.grade === grade.toString()) || { status: 'registered' };
-          const step = statusEntry.status;
-          const config = statusColors[step];
+      <div style={{ animation: 'fadeInUp 0.5s ease-out 0.2s both', marginBottom: '28px' }}>
+        {(() => {
+          const grade = currentGradeView;
+          const isActive = activeGradeStrings.includes(grade);
 
-          return (
-            <div key={grade} className="card" style={{ borderLeft: `4px solid ${config.color}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <div>
-                  <h4 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>Grade {grade}</h4>
-                  <div style={{ 
-                    fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px',
-                    color: config.color, background: config.bg, display: 'inline-block', marginTop: '4px'
-                  }}>
-                    {config.label}
-                  </div>
-                </div>
-                {statusEntry.module_code && (
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Module</div>
-                    <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent-400)' }}>{statusEntry.module_code}</div>
-                  </div>
-                )}
-              </div>
+          if (isActive) {
+            const statusEntry = gradeStatuses.find(gs => gs.grade === grade.toString()) || { status: 'registered' };
+            const step = statusEntry.status;
+            const config = statusColors[step];
 
-              <div style={{ padding: '12px', background: 'var(--bg-glass)', borderRadius: '12px', marginBottom: '16px' }}>
-                {step === 'registered' ? (
-                  <>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                      Baseline assessment pending for Grade {grade}.
-                    </p>
-                    <Link href={`/assessments/new?grade=${grade}`} className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
-                      Start Assessment
-                    </Link>
-                  </>
-                ) : step === 'assessed' ? (
-                  <>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                      Assessment complete! Please schedule the live session.
-                    </p>
-                    <Link href={`/schedule?grade=${grade}`} className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
-                      Schedule Session 1
-                    </Link>
-                  </>
-                ) : step === 'scheduled' ? (
-                  <>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                       Session is planned. Update details on session day.
-                    </p>
-                    <Link href="/schedule" className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
-                      View Session Pulse
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                      Session 1 complete. Fill feedback to unlock Session 2.
-                    </p>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                       <Link href="/feedback" className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }}>Feedback</Link>
-                       <Link href="/schedule" className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }}>Session 2</Link>
+            return (
+              <div className="card" style={{ borderLeft: `4px solid ${config.color}`, padding: '28px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <div>
+                    <h4 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>Grade {grade} Workflow</h4>
+                    <div style={{ 
+                      fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '4px',
+                      color: config.color, background: config.bg, display: 'inline-block', marginTop: '6px'
+                    }}>
+                      {config.label}
                     </div>
-                  </>
-                )}
+                  </div>
+                  {statusEntry.module_code && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Module</div>
+                      <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--accent-400)' }}>{statusEntry.module_code}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ padding: '16px', background: 'var(--bg-glass)', borderRadius: '12px', marginBottom: '24px' }}>
+                  {step === 'registered' ? (
+                    <>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                        Baseline assessment pending for Grade {grade}. Start the survey now to assign a module.
+                      </p>
+                      <Link href={`/assessments/new?grade=${grade}`} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                        Start Assessment
+                      </Link>
+                    </>
+                  ) : step === 'assessed' ? (
+                    <>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                        Assessment complete! Please schedule the live session.
+                      </p>
+                      <Link href={`/schedule?grade=${grade}`} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                        Schedule Session 1
+                      </Link>
+                    </>
+                  ) : step === 'scheduled' ? (
+                    <>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                         Session is planned. Update details on session day.
+                      </p>
+                      <Link href="/schedule" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
+                        View Session Pulse
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                        Session 1 complete. Fill feedback to unlock Session 2.
+                      </p>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                         <Link href="/feedback" className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>Feedback</Link>
+                         <Link href="/schedule" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>Session 2</Link>
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                {/* Mini Pipeline Indicator */}
+                <div style={{ display: 'flex', gap: '4px', height: '4px' }}>
+                   <div style={{ flex: 1, background: step !== 'registered' ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
+                   <div style={{ flex: 1, background: ['scheduled', 'completed'].includes(step) ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
+                   <div style={{ flex: 1, background: step === 'completed' ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
+                </div>
               </div>
-              
-              {/* Mini Pipeline Indicator */}
-              <div style={{ display: 'flex', gap: '4px', height: '4px' }}>
-                 <div style={{ flex: 1, background: step !== 'registered' ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
-                 <div style={{ flex: 1, background: ['scheduled', 'completed'].includes(step) ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
-                 <div style={{ flex: 1, background: step === 'completed' ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
+            );
+          } else {
+            return (
+              <div className="card" style={{ padding: '40px', textAlign: 'center', border: '1px dashed var(--border-subtle)', background: 'var(--bg-glass)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🎓</div>
+                <h4 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>Grade {grade} is Inactive</h4>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', maxWidth: '440px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
+                  Grade {grade} is not currently enrolled in the program for your school. Click below to add it.
+                </p>
+                <button
+                  onClick={() => handleActivateGrade(grade)}
+                  disabled={addingGrade}
+                  className="btn btn-primary"
+                  style={{ padding: '10px 28px', fontWeight: 600 }}
+                >
+                  {addingGrade ? 'Enrolling Grade...' : `Enroll Grade ${grade}`}
+                </button>
               </div>
-            </div>
-          );
-        })}
+            );
+          }
+        })()}
       </div>
 
       {/* Quick Actions at bottom */}
