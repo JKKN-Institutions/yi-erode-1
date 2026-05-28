@@ -20,6 +20,7 @@ const adminNav = [
       { href: '/admin-dashboard/schools-list', label: 'School Coordinators', icon: '🏢' },
       { href: '/admin-dashboard/mentors-list', label: 'Mentor Roster', icon: '🧑‍⚕️' },
       { href: '/admin-dashboard/learners-list', label: 'Learner List', icon: '🎓' },
+      { href: '/admin-dashboard/users', label: 'User Roster', icon: '👥' },
     ]
   },
   {
@@ -38,6 +39,7 @@ const mentorNav = [
     section: 'Overview',
     items: [
       { href: '/mentor-dashboard', label: 'My Dashboard', icon: '📊' },
+      { href: '/mentor-dashboard/schedule', label: 'My Schedule', icon: '📅' },
     ]
   },
 ]
@@ -53,6 +55,7 @@ const schoolNav = [
     section: 'School',
     items: [
       { href: '/schedule', label: 'Sessions', icon: '📅' },
+      { href: '/school-dashboard/sessions', label: 'Sessions & Progression', icon: '⚡' },
       { href: '/feedback', label: 'Feedback', icon: '💬' },
     ]
   },
@@ -68,6 +71,7 @@ const learnerNav = [
   {
     section: 'Program',
     items: [
+      { href: '/student-dashboard/resources', label: 'Resource Library', icon: '📚' },
       { href: '/feedback', label: 'Feedback', icon: '📝' },
     ]
   },
