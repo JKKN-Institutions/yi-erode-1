@@ -55,7 +55,6 @@ export async function submitAssessment(formData) {
       .from('assessments')
       .insert([{
         school_id: school_id,
-        grade: grade,
         category_a: categoryA,
         category_b: categoryB,
         module_code: moduleCode,
