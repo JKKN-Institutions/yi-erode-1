@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "./supabase/server";
+import { createClient, createAdminClient } from "./supabase/server";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "./logger";
 
@@ -162,7 +162,7 @@ export async function initializeGradeStatus(schoolId, grade) {
  * Update session details with trainer, mentors, learners, and attachments
  */
 export async function updateSessionPulse(sessionId, updateData) {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   
   const { error } = await supabase
     .from('sessions')
@@ -189,7 +189,7 @@ export async function updateSessionPulse(sessionId, updateData) {
  * Submit Principal Feedback for a session
  */
 export async function submitPrincipalFeedback(sessionId, feedback) {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   
   const { error } = await supabase
     .from('sessions')
@@ -212,7 +212,7 @@ export async function submitPrincipalFeedback(sessionId, feedback) {
  * Submit Post-Intervention Feedback / Impact
  */
 export async function submitImpactAssessment(sessionId, impactData) {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   
   const { error } = await supabase
     .from('sessions')
@@ -236,7 +236,7 @@ export async function submitImpactAssessment(sessionId, impactData) {
  * Add a participating grade to the school and initialize its status
  */
 export async function addSchoolGrade(schoolId, grade) {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   
   // 1. Fetch current grades
   const { data: school, error: fetchError } = await supabase
@@ -298,7 +298,7 @@ export async function addSchoolGrade(schoolId, grade) {
  * Save attendance details for a specific session
  */
 export async function saveSessionAttendance(sessionId, { student_strength, attended_count, absentees }) {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   
   const { data: session, error: getError } = await supabase
     .from('sessions')
@@ -344,7 +344,7 @@ export async function saveSessionAttendance(sessionId, { student_strength, atten
  * Save principal feedback and follow-up/impact details for a specific session
  */
 export async function saveSessionFeedback(sessionId, { principal_feedback, impact_feedback, impact_summary }) {
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   
   const { error } = await supabase
     .from('sessions')

@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 import { getServerRole } from '@/utils/auth-server';
 
 // Calculate Category based on specific weightings (Z > Y > X, R > Q > P for ties)
@@ -34,7 +34,7 @@ function calculateCategoryB(counts) {
 
 export async function submitAssessment(formData) {
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { user, school_id } = await getServerRole();
     const grade = formData.metadata.grade;
 
@@ -122,7 +122,7 @@ export async function submitAssessment(formData) {
 
 export async function scheduleSession(scheduleData) {
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { school_id } = await getServerRole();
 
     if (!school_id) throw new Error("No school linked to your account.");
