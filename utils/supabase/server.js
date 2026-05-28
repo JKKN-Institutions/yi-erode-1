@@ -30,8 +30,12 @@ export async function createClient() {
 
 export async function createAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!url || !key) {
+    throw new Error("Supabase configuration is missing. Please ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are configured in your Vercel Project Settings.")
+  }
+  
+  return createSupabaseClient(url, key)
 }
