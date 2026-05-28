@@ -171,8 +171,7 @@ export async function updateSessionPulse(sessionId, updateData) {
       mentor_aliases: updateData.mentor_aliases,
       learner_count: updateData.learner_count,
       learner_details: updateData.learner_details,
-      attachment_urls: updateData.attachment_urls,
-      updated_at: new Date().toISOString()
+      attachment_urls: updateData.attachment_urls
     })
     .eq('id', sessionId);
 
@@ -325,8 +324,7 @@ export async function saveSessionAttendance(sessionId, { student_strength, atten
     .from('sessions')
     .update({
       learner_count: parseInt(attended_count),
-      learner_details: updatedDetails,
-      updated_at: new Date().toISOString()
+      learner_details: updatedDetails
     })
     .eq('id', sessionId);
     
@@ -352,8 +350,7 @@ export async function saveSessionFeedback(sessionId, { principal_feedback, impac
       principal_feedback: principal_feedback,
       post_intervention_feedback_1: impact_feedback,
       impact_summary: impact_summary,
-      status: 'completed',
-      updated_at: new Date().toISOString()
+      status: 'completed'
     })
     .eq('id', sessionId);
     
