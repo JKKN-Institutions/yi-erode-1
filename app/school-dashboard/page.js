@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSchoolById, getSchoolSessions, getSchoolGradeStatuses } from "@/utils/school-actions";
+import { getSchoolById, getSchoolSessions, getSchoolGradeStatuses, addSchoolGrade } from "@/utils/school-actions";
 import Link from 'next/link';
 
 export default function SchoolDashboard() {
@@ -11,6 +11,8 @@ export default function SchoolDashboard() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedGrade, setSelectedGrade] = useState('');
+  const [addingGrade, setAddingGrade] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -61,6 +63,40 @@ export default function SchoolDashboard() {
     );
   }
 
+  const handleAddGrade = async (e) => {
+    e.preventDefault();
+    if (!selectedGrade || !school?.id) return;
+    
+    setAddingGrade(true);
+    try {
+      const res = await addSchoolGrade(school.id, selectedGrade);
+      if (res.success) {
+        const [schoolData, gradeData] = await Promise.all([
+          getSchoolById(school.id),
+          getSchoolGradeStatuses(school.id)
+        ]);
+        setSchool(schoolData);
+        setGradeStatuses(gradeData);
+        setSelectedGrade('');
+      } else {
+        alert(`Error adding grade: ${res.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to add grade.');
+    } finally {
+      setAddingGrade(false);
+    }
+  };
+
+  const gradeOptions = [
+    { value: '8', label: 'Grade 8' },
+    { value: '9', label: 'Grade 9' },
+    { value: '10', label: 'Grade 10' },
+    { value: '11', label: 'Grade 11' },
+    { value: '12', label: 'Grade 12' },
+  ];
+
   const greeting = currentTime.getHours() < 12 ? 'Good Morning' : currentTime.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
   // Summarize overall school stats
@@ -74,6 +110,9 @@ export default function SchoolDashboard() {
     scheduled: { color: 'var(--primary-400)', bg: 'var(--primary-glow)', label: 'Scheduled' },
     completed: { color: 'var(--success-400)', bg: 'var(--success-bg)', label: 'Completed' },
   };
+
+  const activeGradeStrings = participatingGrades.map(g => g.toString());
+  const selectableOptions = gradeOptions.filter(opt => !activeGradeStrings.includes(opt.value));
 
   return (
     <div>
@@ -143,9 +182,57 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
-      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span>🎓</span> Grade-Specific Workflow
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>🎓</span> Grade-Specific Workflow
+        </h3>
+        
+        {selectableOptions.length > 0 ? (
+          <form onSubmit={handleAddGrade} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              disabled={addingGrade}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: 'var(--bg-glass, rgba(255,255,255,0.03))',
+                border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
+                color: 'var(--text-primary, white)',
+                fontSize: '13px',
+                fontWeight: 600,
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="" style={{ background: '#1e1e2e', color: 'var(--text-secondary)' }}>Add Grade...</option>
+              {selectableOptions.map(opt => (
+                <option key={opt.value} value={opt.value} style={{ background: '#1e1e2e' }}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={!selectedGrade || addingGrade}
+              className="btn btn-primary btn-sm"
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                height: '35px',
+              }}
+            >
+              {addingGrade ? 'Adding...' : 'Add Grade'}
+            </button>
+          </form>
+        ) : (
+          <span style={{ fontSize: '12.5px', color: 'var(--text-tertiary)', background: 'var(--bg-glass)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+             All Grades Active (8-12)
+          </span>
+        )}
+      </div>
 
       <div style={{ 
         display: 'grid', 

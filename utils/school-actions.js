@@ -231,3 +231,66 @@ export async function submitImpactAssessment(sessionId, impactData) {
   revalidatePath('/schedule');
   return { success: true };
 }
+
+/**
+ * Add a participating grade to the school and initialize its status
+ */
+export async function addSchoolGrade(schoolId, grade) {
+  const supabase = await createClient();
+  
+  // 1. Fetch current grades
+  const { data: school, error: fetchError } = await supabase
+    .from('schools')
+    .select('grades')
+    .eq('id', schoolId)
+    .single();
+    
+  if (fetchError) {
+    console.error('Error fetching school grades:', fetchError.message);
+    return { success: false, error: fetchError.message };
+  }
+  
+  const currentGrades = school.grades || [];
+  const gradeStr = grade.toString();
+  
+  // Check if it's already there
+  const alreadyExists = currentGrades.some(g => g.toString() === gradeStr);
+  
+  if (!alreadyExists) {
+    // Append and save to schools table
+    const updatedGrades = [...currentGrades, gradeStr];
+    const { error: updateError } = await supabase
+      .from('schools')
+      .update({ grades: updatedGrades })
+      .eq('id', schoolId);
+      
+    if (updateError) {
+      console.error('Error updating school grades:', updateError.message);
+      return { success: false, error: updateError.message };
+    }
+  }
+
+  // 2. Initialize in school_grade_status table (if not already there)
+  const { data: existingStatus } = await supabase
+    .from('school_grade_status')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('grade', gradeStr)
+    .maybeSingle();
+
+  if (!existingStatus) {
+    const { error: insertError } = await supabase
+      .from('school_grade_status')
+      .insert([{ school_id: schoolId, grade: gradeStr, status: 'registered' }]);
+
+    if (insertError) {
+      console.warn('Error inserting grade status (might exist):', insertError.message);
+    }
+  }
+
+  await logActivity('Added School Grade', `Added Grade ${gradeStr} to school ID ${schoolId}`);
+  
+  revalidatePath('/school-dashboard');
+  return { success: true };
+}
+
