@@ -38,6 +38,8 @@ export default function SchoolSessionsPage() {
         
         if (schoolData?.grades && schoolData.grades.length > 0) {
           setSelectedGrade(schoolData.grades[0].toString());
+        } else {
+          setSelectedGrade('8');
         }
       }
     } catch (err) {
@@ -121,14 +123,14 @@ export default function SchoolSessionsPage() {
 
           <form onSubmit={handleScheduleSubmit}>
             <div className="form-group">
-              <label className="form-label">Select Enrolled Grade</label>
+              <label className="form-label">Select Grade</label>
               <select 
                 className="form-input" 
                 value={selectedGrade} 
                 onChange={(e) => setSelectedGrade(e.target.value)}
                 required
               >
-                {enrolledGrades.map(g => (
+                {['8', '9', '10', '11', '12'].map(g => (
                   <option key={g} value={g}>Grade {g}</option>
                 ))}
               </select>

@@ -71,6 +71,29 @@ export async function submitAssessment(formData) {
 
     if (assessmentError) throw assessmentError;
 
+    // 1.5. Ensure grade is added to schools.grades array in background
+    try {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('grades')
+        .eq('id', school_id)
+        .single();
+        
+      if (school) {
+        const currentGrades = school.grades || [];
+        const gradeStr = grade.toString();
+        if (!currentGrades.map(g => g.toString()).includes(gradeStr)) {
+          const updatedGrades = [...currentGrades, gradeStr];
+          await supabase
+            .from('schools')
+            .update({ grades: updatedGrades })
+            .eq('id', school_id);
+        }
+      }
+    } catch (e) {
+      console.warn("Non-fatal error updating schools.grades array:", e.message);
+    }
+
     // 2. Update the grade-specific status
     const { error: gradeError } = await supabase
       .from('school_grade_status')
