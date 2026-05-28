@@ -101,27 +101,40 @@ export default async function SchoolDetailPage({ params }) {
             <span className={`badge ${status.class}`}>{status.icon} {status.label}</span>
           </div>
           
-          <div style={{ marginBottom: '24px' }}>
-            <div className="form-label" style={{ marginBottom: '8px' }}>Module Assigned</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div className="matrix-cell" style={{ 
-                  display: 'inline-flex', width: '48px', height: '48px', 
-                  backgroundColor: school.module_code ? 'var(--accent-glow)' : 'var(--bg-glass)', 
-                  border: `1px solid ${school.module_code ? 'var(--accent-400)' : 'var(--border-subtle)'}`,
-                  borderRadius: '12px',
-                  alignItems: 'center', justifyContent: 'center'
-              }}>
-                <span style={{ fontSize: '14px', color: school.module_code ? 'var(--accent-400)' : 'var(--text-tertiary)', fontWeight: 700 }}>
-                    {school.module_code || '??'}
-                </span>
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                {school.module_code 
-                  ? "Based on the assessment data provided by your school."
-                  : "Assessment pending. Please complete the module planning questionnaire."}
+          {isAdmin && (
+            <div style={{ marginBottom: '24px' }}>
+              <div className="form-label" style={{ marginBottom: '8px' }}>Module Assigned</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="matrix-cell" style={{ 
+                    display: 'inline-flex', width: '48px', height: '48px', 
+                    backgroundColor: school.module_code ? 'var(--accent-glow)' : 'var(--bg-glass)', 
+                    border: `1px solid ${school.module_code ? 'var(--accent-400)' : 'var(--border-subtle)'}`,
+                    borderRadius: '12px',
+                    alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <span style={{ fontSize: '14px', color: school.module_code ? 'var(--accent-400)' : 'var(--text-tertiary)', fontWeight: 700 }}>
+                      {school.module_code || '??'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {school.module_code 
+                    ? "Based on the assessment data provided by this school."
+                    : "Assessment pending. School coordinator must complete the module planning questionnaire."}
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {isCoordinator && (
+            <div style={{ marginBottom: '24px' }}>
+              <div className="form-label" style={{ marginBottom: '8px' }}>Program Allocation Status</div>
+              <div style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {school.module_code 
+                  ? "Assessment complete. JKKN mentor allocation is being managed by the YI Erode Admin."
+                  : "Assessment pending. Please complete the baseline questionnaire on your Sessions page."}
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="form-label" style={{ marginBottom: '8px' }}>Program Activity</div>

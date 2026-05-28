@@ -26,6 +26,7 @@ const adminNav = [
   {
     section: 'Controls',
     items: [
+      { href: '/admin-dashboard/allocations', label: 'Mentor Allocations', icon: '🎯' },
       { href: '/admin-dashboard/notes', label: 'Admin Comms', icon: '📋' },
       { href: '/admin-dashboard/bug-reports', label: 'Support & Feedback', icon: '💬' },
       { href: '/admin-dashboard/add-mentor', label: 'Onboard Mentor', icon: '➕' },
@@ -48,15 +49,15 @@ const schoolNav = [
   {
     section: 'Overview',
     items: [
-      { href: '/school-dashboard', label: 'My Dashboard', icon: '📊' },
+      { href: '/school-dashboard', label: 'School Info', icon: '🏢' },
     ]
   },
   {
-    section: 'School',
+    section: 'Operations',
     items: [
-      { href: '/schedule', label: 'Sessions', icon: '📅' },
-      { href: '/school-dashboard/sessions', label: 'Sessions & Progression', icon: '⚡' },
-      { href: '/feedback', label: 'Feedback', icon: '💬' },
+      { href: '/school-dashboard/sessions', label: 'Sessions', icon: '📅' },
+      { href: '/school-dashboard/attendance', label: 'Attendance', icon: '📝' },
+      { href: '/school-dashboard/feedback', label: 'Feedback', icon: '💬' },
     ]
   },
 ]

@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSchoolById, getSchoolSessions, getSchoolGradeStatuses, addSchoolGrade } from "@/utils/school-actions";
+import { getSchoolById, getSchoolGradeStatuses, addSchoolGrade } from "@/utils/school-actions";
 import Link from 'next/link';
 
 export default function SchoolDashboard() {
   const [user, setUser] = useState(null);
   const [school, setSchool] = useState(null);
   const [gradeStatuses, setGradeStatuses] = useState([]);
-  const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [currentGradeView, setCurrentGradeView] = useState('8');
+  const [newGradeToEnroll, setNewGradeToEnroll] = useState('');
   const [addingGrade, setAddingGrade] = useState(false);
 
   useEffect(() => {
@@ -22,17 +21,12 @@ export default function SchoolDashboard() {
       setUser(data.user);
       
       if (data.school_id) {
-        const [schoolData, sessionsData, gradeData] = await Promise.all([
+        const [schoolData, gradeData] = await Promise.all([
           getSchoolById(data.school_id),
-          getSchoolSessions(data.school_id),
           getSchoolGradeStatuses(data.school_id)
         ]);
         setSchool(schoolData);
-        setSessions(sessionsData);
         setGradeStatuses(gradeData);
-        if (schoolData?.grades && schoolData.grades.length > 0) {
-          setCurrentGradeView(schoolData.grades[0].toString());
-        }
       }
       setLoading(false);
     }
@@ -43,7 +37,7 @@ export default function SchoolDashboard() {
   }, []);
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading dashboard...</div>;
+    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading school details...</div>;
   }
 
   if (!school) {
@@ -57,7 +51,7 @@ export default function SchoolDashboard() {
           </p>
           <div style={{ padding: '16px', background: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--border-subtle)', textAlign: 'left', marginBottom: '24px' }}>
             <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-tertiary)' }}>
-              <strong>Next Steps:</strong> Please contact the Mission ON Admin to link your account to your school. Once linked, you can start the assessment and scheduling process.
+              <strong>Next Steps:</strong> Please contact the Mission ON Admin to link your account to your school. Once linked, you can access your school's dashboard.
             </p>
           </div>
           <Link href="/" className="btn btn-secondary">Return to Home</Link>
@@ -66,12 +60,13 @@ export default function SchoolDashboard() {
     );
   }
 
-  const handleActivateGrade = async (grade) => {
-    if (!grade || !school?.id) return;
+  const handleEnrollGrade = async (e) => {
+    e.preventDefault();
+    if (!newGradeToEnroll || !school?.id) return;
     
     setAddingGrade(true);
     try {
-      const res = await addSchoolGrade(school.id, grade);
+      const res = await addSchoolGrade(school.id, newGradeToEnroll);
       if (res.success) {
         const [schoolData, gradeData] = await Promise.all([
           getSchoolById(school.id),
@@ -79,260 +74,225 @@ export default function SchoolDashboard() {
         ]);
         setSchool(schoolData);
         setGradeStatuses(gradeData);
+        setNewGradeToEnroll('');
       } else {
-        alert(`Error activating grade: ${res.error}`);
+        alert(`Error enrolling grade: ${res.error}`);
       }
     } catch (err) {
       console.error(err);
-      alert('Failed to activate grade.');
+      alert('Failed to enroll grade.');
     } finally {
       setAddingGrade(false);
     }
   };
 
-  const gradeOptions = [
-    { value: '8', label: 'Grade 8' },
-    { value: '9', label: 'Grade 9' },
-    { value: '10', label: 'Grade 10' },
-    { value: '11', label: 'Grade 11' },
-    { value: '12', label: 'Grade 12' },
-  ];
+  const gradeOptions = ['8', '9', '10', '11', '12'];
+  const enrolledGrades = school.grades || [];
+  const activeGradeStrings = enrolledGrades.map(g => g.toString());
+  const selectableOptions = gradeOptions.filter(g => !activeGradeStrings.includes(g));
 
   const greeting = currentTime.getHours() < 12 ? 'Good Morning' : currentTime.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
-  // Summarize overall school stats
-  const participatingGrades = school.grades || [];
-  const completedGrades = gradeStatuses.filter(gs => gs.status === 'completed').length;
-  const completionPercent = participatingGrades.length > 0 ? Math.round((completedGrades / participatingGrades.length) * 100) : 0;
-
-  const statusColors = {
-    registered: { color: 'var(--text-tertiary)', bg: 'var(--bg-glass)', label: 'Registered' },
-    assessed: { color: 'var(--accent-400)', bg: 'var(--accent-glow)', label: 'Assessed' },
-    scheduled: { color: 'var(--primary-400)', bg: 'var(--primary-glow)', label: 'Scheduled' },
-    completed: { color: 'var(--success-400)', bg: 'var(--success-bg)', label: 'Completed' },
-  };
-
-  const activeGradeStrings = participatingGrades.map(g => g.toString());
-  const selectableOptions = gradeOptions.filter(opt => !activeGradeStrings.includes(opt.value));
-
   return (
-    <div>
+    <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
       {/* Hero Welcome */}
       <div style={{
         marginBottom: '36px',
         padding: '32px 36px',
         borderRadius: '20px',
-        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(251, 191, 36, 0.05) 50%, rgba(99, 102, 241, 0.03) 100%)',
-        border: '1px solid rgba(245, 158, 11, 0.12)',
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.05) 50%, rgba(236, 72, 153, 0.03) 100%)',
+        border: '1px solid rgba(99, 102, 241, 0.12)',
         position: 'relative',
-        overflow: 'hidden',
-        animation: 'fadeInUp 0.5s ease-out'
+        overflow: 'hidden'
       }}>
-        <div style={{ position: 'absolute', top: '-60px', right: '-40px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(245, 158, 11, 0.1), transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '-60px', right: '-40px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '4px' }}>
             {greeting} 👋
           </p>
           <h1 style={{
             fontSize: '28px', fontWeight: 800, letterSpacing: '-0.8px',
-            background: 'linear-gradient(135deg, #fcd34d, #fbbf24, #f59e0b)',
+            background: 'linear-gradient(135deg, #a5b4fc, #c084fc, #f472b6)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             lineHeight: 1.2, marginBottom: '6px'
           }}>
-            {user?.name || 'School Coordinator'}
+            {school.name}
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
-            Managing <strong style={{ color: 'var(--text-secondary)' }}>{school.name}</strong>
+            Welcome back, Coordinator <strong style={{ color: 'var(--text-secondary)' }}>{user?.name}</strong>
           </p>
         </div>
       </div>
 
-      {/* Grid: School Info + Global Progress */}
+      {/* Main content split layout */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '2fr 1fr',
-        gap: '20px',
-        marginBottom: '28px',
-        animation: 'fadeInUp 0.5s ease-out 0.1s both'
+        gap: '24px',
+        alignItems: 'start'
       }}>
-        <div className="card" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          <div style={{
-            width: '64px', height: '64px', borderRadius: '16px',
-            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.8rem', flexShrink: 0
-          }}>🏫</div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>{school.name}</h2>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>📍 {school.district}</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>📋 {school.board_type}</span>
+        
+        {/* Left Column: School Details */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Card: Basic School Details */}
+          <div className="card" style={{ padding: '28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+              <div style={{
+                width: '48px', height: '48px', borderRadius: '12px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.1))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem'
+              }}>🏫</div>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>School Profile Details</h2>
+                <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', margin: 0 }}>Registered information for Mission ON program</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>District</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>📍 {school.district}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Board Affiliation</span>
+                <span style={{
+                  display: 'inline-block', padding: '3px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700,
+                  background: 'var(--bg-glass-strong)', border: '1px solid var(--border-subtle)'
+                }}>
+                  {school.board_type}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Address</span>
+              <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
+                {school.address || "No address provided."}
+              </p>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-             <Link href={`/schools/${school.id}`} className="btn btn-sm btn-secondary">School Profile</Link>
-          </div>
-        </div>
 
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>Program Coverage</div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--success-400)', marginBottom: '6px' }}>{completionPercent}%</div>
-          <div className="progress-bar" style={{ height: '6px' }}>
-            <div className="progress-fill" style={{ width: `${completionPercent}%`, background: 'var(--success-400)' }}></div>
-          </div>
-        </div>
-      </div>
+          {/* Card: Enrolled Grades & Activation */}
+          <div className="card" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🎓</span> Enrolled Grades
+            </h3>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>🎓</span> Grade-Specific Workflow
-        </h3>
-        
-        {/* Grade Selector Dropdown */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>Select Grade:</span>
-          <select
-            value={currentGradeView}
-            onChange={(e) => setCurrentGradeView(e.target.value)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              background: 'var(--bg-glass, rgba(255,255,255,0.03))',
-              border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))',
-              color: 'var(--text-primary, white)',
-              fontSize: '14px',
-              fontWeight: 600,
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            {gradeOptions.map(opt => (
-              <option key={opt.value} value={opt.value} style={{ background: '#1e1e2e' }}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div style={{ animation: 'fadeInUp 0.5s ease-out 0.2s both', marginBottom: '28px' }}>
-        {(() => {
-          const grade = currentGradeView;
-          const isActive = activeGradeStrings.includes(grade);
-
-          if (isActive) {
-            const statusEntry = gradeStatuses.find(gs => gs.grade === grade.toString()) || { status: 'registered' };
-            const step = statusEntry.status;
-            const config = statusColors[step];
-
-            return (
-              <div className="card" style={{ borderLeft: `4px solid ${config.color}`, padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                  <div>
-                    <h4 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>Grade {grade} Workflow</h4>
-                    <div style={{ 
-                      fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '4px',
-                      color: config.color, background: config.bg, display: 'inline-block', marginTop: '6px'
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              {enrolledGrades.length > 0 ? (
+                enrolledGrades.map(g => {
+                  const status = gradeStatuses.find(gs => gs.grade === g.toString())?.status || 'registered';
+                  const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                  const badgeColors = {
+                    registered: 'rgba(99, 102, 241, 0.15)',
+                    assessed: 'rgba(168, 85, 247, 0.15)',
+                    scheduled: 'rgba(251, 191, 36, 0.15)',
+                    completed: 'rgba(16, 185, 129, 0.15)'
+                  };
+                  return (
+                    <div key={g} style={{
+                      padding: '12px 16px', borderRadius: '12px', background: 'var(--bg-glass)',
+                      border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '12px'
                     }}>
-                      {config.label}
+                      <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>Grade {g}</div>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
+                        background: badgeColors[status] || 'var(--bg-glass-strong)',
+                        color: status === 'completed' ? 'var(--success-400)' : status === 'scheduled' ? 'var(--primary-400)' : 'var(--text-secondary)'
+                      }}>
+                        {statusLabel}
+                      </span>
                     </div>
-                  </div>
-                  {statusEntry.module_code && (
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Module</div>
-                      <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--accent-400)' }}>{statusEntry.module_code}</div>
-                    </div>
-                  )}
+                  );
+                })
+              ) : (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', width: '100%' }}>
+                  No grades currently enrolled. Enroll a grade below to start.
                 </div>
+              )}
+            </div>
 
-                <div style={{ padding: '16px', background: 'var(--bg-glass)', borderRadius: '12px', marginBottom: '24px' }}>
-                  {step === 'registered' ? (
-                    <>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                        Baseline assessment pending for Grade {grade}. Start the survey now to assign a module.
-                      </p>
-                      <Link href={`/assessments/new?grade=${grade}`} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                        Start Assessment
-                      </Link>
-                    </>
-                  ) : step === 'assessed' ? (
-                    <>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                        Assessment complete! Please schedule the live session.
-                      </p>
-                      <Link href={`/schedule?grade=${grade}`} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                        Schedule Session 1
-                      </Link>
-                    </>
-                  ) : step === 'scheduled' ? (
-                    <>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                         Session is planned. Update details on session day.
-                      </p>
-                      <Link href="/schedule" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
-                        View Session Pulse
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                        Session 1 complete. Fill feedback to unlock Session 2.
-                      </p>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                         <Link href="/feedback" className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>Feedback</Link>
-                         <Link href="/schedule" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>Session 2</Link>
-                      </div>
-                    </>
-                  )}
+            {/* Enroll New Grade Dropdown Form */}
+            {selectableOptions.length > 0 && (
+              <form onSubmit={handleEnrollGrade} style={{
+                display: 'flex', gap: '12px', alignItems: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '20px'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label" style={{ marginBottom: '6px' }}>Enroll a New Grade</label>
+                  <select
+                    className="form-input"
+                    value={newGradeToEnroll}
+                    onChange={e => setNewGradeToEnroll(e.target.value)}
+                    required
+                  >
+                    <option value="">Select grade level...</option>
+                    {selectableOptions.map(opt => (
+                      <option key={opt} value={opt}>Grade {opt}</option>
+                    ))}
+                  </select>
                 </div>
-                
-                {/* Mini Pipeline Indicator */}
-                <div style={{ display: 'flex', gap: '4px', height: '4px' }}>
-                   <div style={{ flex: 1, background: step !== 'registered' ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
-                   <div style={{ flex: 1, background: ['scheduled', 'completed'].includes(step) ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
-                   <div style={{ flex: 1, background: step === 'completed' ? 'var(--success-400)' : 'var(--border-subtle)', borderRadius: '2px' }} />
-                </div>
-              </div>
-            );
-          } else {
-            return (
-              <div className="card" style={{ padding: '40px', textAlign: 'center', border: '1px dashed var(--border-subtle)', background: 'var(--bg-glass)' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🎓</div>
-                <h4 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>Grade {grade} is Inactive</h4>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', maxWidth: '440px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
-                  Grade {grade} is not currently enrolled in the program for your school. Click below to add it.
-                </p>
                 <button
-                  onClick={() => handleActivateGrade(grade)}
-                  disabled={addingGrade}
+                  type="submit"
                   className="btn btn-primary"
-                  style={{ padding: '10px 28px', fontWeight: 600 }}
+                  style={{ height: '42px', padding: '0 24px' }}
+                  disabled={addingGrade}
                 >
-                  {addingGrade ? 'Enrolling Grade...' : `Enroll Grade ${grade}`}
+                  {addingGrade ? 'Enrolling...' : 'Enroll'}
                 </button>
-              </div>
-            );
-          }
-        })()}
-      </div>
+              </form>
+            )}
+          </div>
 
-      {/* Quick Actions at bottom */}
-      <div style={{ marginTop: '32px', display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-         {[
-           { label: 'Learner Reports', icon: '📊', color: 'var(--success-400)' },
-           { label: 'Upcoming Sessions', icon: '📅', color: 'var(--primary-400)' },
-           { label: 'Support Desk', icon: '💬', color: 'var(--accent-400)' },
-         ].map(action => (
-           <button key={action.label} style={{
-             flex: '0 0 160px', padding: '16px', borderRadius: '14px', background: 'var(--bg-glass)',
-             border: '1px solid var(--border-subtle)', textAlign: 'left', cursor: 'pointer'
-           }}>
-             <div style={{ fontSize: '20px', marginBottom: '8px' }}>{action.icon}</div>
-             <div style={{ fontWeight: 600, fontSize: '13px' }}>{action.label}</div>
-           </button>
-         ))}
+        </div>
+
+        {/* Right Column: POC & Quick Navigation Links */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Card: Contact Details / POC */}
+          <div className="card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>
+              📞 Primary Point of Contact
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, display: 'block' }}>Name</span>
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>{school.contact_person || 'Not Specified'}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, display: 'block' }}>Phone</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--primary-400)' }}>{school.phone || '—'}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, display: 'block' }}>Email</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, wordBreak: 'break-all' }}>{school.email || '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card: Quick Actions / Side Navigation Links */}
+          <div className="card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>
+              ⚡ Quick Operations
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <Link href="/school-dashboard/sessions" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', padding: '12px 16px' }}>
+                <span style={{ marginRight: '10px', fontSize: '1.2rem' }}>📅</span> Manage Sessions
+              </Link>
+              <Link href="/school-dashboard/attendance" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', padding: '12px 16px' }}>
+                <span style={{ marginRight: '10px', fontSize: '1.2rem' }}>📝</span> Log Attendance
+              </Link>
+              <Link href="/school-dashboard/feedback" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start', padding: '12px 16px' }}>
+                <span style={{ marginRight: '10px', fontSize: '1.2rem' }}>💬</span> Session Feedback
+              </Link>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );
 }
-

@@ -294,3 +294,76 @@ export async function addSchoolGrade(schoolId, grade) {
   return { success: true };
 }
 
+/**
+ * Save attendance details for a specific session
+ */
+export async function saveSessionAttendance(sessionId, { student_strength, attended_count, absentees }) {
+  const supabase = await createClient();
+  
+  const { data: session, error: getError } = await supabase
+    .from('sessions')
+    .select('learner_details')
+    .eq('id', sessionId)
+    .single();
+    
+  if (getError) {
+    console.error('Error fetching session for attendance:', getError.message);
+    return { success: false, error: getError.message };
+  }
+  
+  const currentDetails = typeof session?.learner_details === 'object' && session.learner_details !== null
+    ? session.learner_details
+    : {};
+    
+  const updatedDetails = {
+    ...currentDetails,
+    student_strength: parseInt(student_strength),
+    absentees: absentees
+  };
+  
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      learner_count: parseInt(attended_count),
+      learner_details: updatedDetails,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', sessionId);
+    
+  if (error) {
+    console.error('Error updating attendance:', error.message);
+    return { success: false, error: error.message };
+  }
+  
+  revalidatePath('/school-dashboard/attendance');
+  revalidatePath('/school-dashboard/sessions');
+  return { success: true };
+}
+
+/**
+ * Save principal feedback and follow-up/impact details for a specific session
+ */
+export async function saveSessionFeedback(sessionId, { principal_feedback, impact_feedback, impact_summary }) {
+  const supabase = await createClient();
+  
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      principal_feedback: principal_feedback,
+      post_intervention_feedback_1: impact_feedback,
+      impact_summary: impact_summary,
+      status: 'completed',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', sessionId);
+    
+  if (error) {
+    console.error('Error updating session feedback:', error.message);
+    return { success: false, error: error.message };
+  }
+  
+  revalidatePath('/school-dashboard/feedback');
+  revalidatePath('/school-dashboard/sessions');
+  return { success: true };
+}
+

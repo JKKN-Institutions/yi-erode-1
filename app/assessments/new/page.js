@@ -85,7 +85,7 @@ function AssessmentForm() {
     setLoading(false);
     
     if (result.success) {
-      router.push(`/school-dashboard?success=assessed&code=${result.moduleCode}`);
+      router.push(`/school-dashboard/sessions?success=assessed`);
     } else {
       alert(result.error || "Failed to submit assessment.");
     }

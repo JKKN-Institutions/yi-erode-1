@@ -1,200 +1,295 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Card } from '@/components/Card';
-import { Plus, Check, Calendar, Users, Award } from 'lucide-react';
-import styles from '@/app/dashboard.module.css';
+import React, { useState, useEffect } from 'react';
+import { getSchoolSessions, getSchoolGradeStatuses, getSchoolById } from "@/utils/school-actions";
+import { scheduleSession } from "@/utils/assessment-actions";
+import { Plus, Calendar, Clock, AlertCircle, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 export default function SchoolSessionsPage() {
-  const [sessions, setSessions] = useState([
-    { id: '1', grade: 'Grade 9', sessionName: 'Session 1: Saying No', trainer: 'Mentor Snape', date: '2026-05-28', status: 'Scheduled' },
-    { id: '2', grade: 'Grade 10', sessionName: 'Session 2: Boundaries', trainer: 'Mentor Dumbledore', date: '2026-05-20', status: 'Completed', attendance: 45 },
-    { id: '3', grade: 'Grade 11', sessionName: 'Baseline Assessment', trainer: 'System Auto', date: '2026-05-15', status: 'Assessed' },
-  ]);
+  const [user, setUser] = useState(null);
+  const [school, setSchool] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [gradeStatuses, setGradeStatuses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [newGrade, setNewGrade] = useState('Grade 9');
-  const [newSession, setNewSession] = useState('Session 1: Saying No');
-  const [newTrainer, setNewTrainer] = useState('');
-  const [newDate, setNewDate] = useState('');
-  
-  const [activePulseSessionId, setActivePulseSessionId] = useState(null);
-  const [attendanceCount, setAttendanceCount] = useState('');
-  const [principalFeedback, setPrincipalFeedback] = useState('');
+  // Form State
+  const [selectedGrade, setSelectedGrade] = useState('');
+  const [sessionDate, setSessionDate] = useState('');
+  const [sessionTime, setSessionTime] = useState('');
+  const [sessionType, setSessionType] = useState('initial');
+  const [scheduling, setScheduling] = useState(false);
 
-  const handleScheduleSession = (e) => {
+  async function loadData() {
+    try {
+      const authResponse = await fetch('/api/auth/me');
+      const authData = await authResponse.json();
+      setUser(authData.user);
+
+      if (authData.school_id) {
+        const [schoolData, sessionsData, gradeData] = await Promise.all([
+          getSchoolById(authData.school_id),
+          getSchoolSessions(authData.school_id),
+          getSchoolGradeStatuses(authData.school_id)
+        ]);
+        setSchool(schoolData);
+        setSessions(sessionsData || []);
+        setGradeStatuses(gradeData || []);
+        
+        if (schoolData?.grades && schoolData.grades.length > 0) {
+          setSelectedGrade(schoolData.grades[0].toString());
+        }
+      }
+    } catch (err) {
+      console.error("Error loading sessions data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleScheduleSubmit = async (e) => {
     e.preventDefault();
-    if (!newTrainer || !newDate) return;
+    if (!selectedGrade || !sessionDate || !sessionTime || scheduling) return;
 
-    const session = {
-      id: Date.now().toString(),
-      grade: newGrade,
-      sessionName: newSession,
-      trainer: newTrainer,
-      date: newDate,
-      status: 'Scheduled',
-    };
+    setScheduling(true);
+    try {
+      const res = await scheduleSession({
+        grade: selectedGrade,
+        type: sessionType,
+        date: sessionDate,
+        time: sessionTime
+      });
 
-    setSessions(prev => [session, ...prev]);
-    setNewTrainer('');
-    setNewDate('');
+      if (res.success) {
+        setSessionDate('');
+        setSessionTime('');
+        setSessionType('initial');
+        // Refresh sessions list
+        await loadData();
+      } else {
+        alert(res.error || "Failed to schedule session.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error scheduling session.");
+    } finally {
+      setScheduling(false);
+    }
   };
 
-  const handleSubmitPulse = (e) => {
-    e.preventDefault();
-    if (!activePulseSessionId || !attendanceCount) return;
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading sessions...</div>;
+  }
 
-    setSessions(prev =>
-      prev.map(s =>
-        s.id === activePulseSessionId
-          ? { ...s, status: 'Completed', attendance: parseInt(attendanceCount) }
-          : s
-      )
+  if (!school) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+        No school assigned to this account.
+      </div>
     );
+  }
 
-    setActivePulseSessionId(null);
-    setAttendanceCount('');
-    setPrincipalFeedback('');
-  };
+  // Check the status of the currently selected grade in the schedule form
+  const currentGradeStatus = gradeStatuses.find(gs => gs.grade === selectedGrade.toString())?.status || 'registered';
+  const isAssessmentPending = currentGradeStatus === 'registered';
+
+  const enrolledGrades = school.grades || [];
 
   return (
-    <div className={styles.listGroup}>
-      <div className={styles.headerSection}>
-        <h1 className={`${styles.dashboardTitle} gradient-text`}>Sessions & Progression</h1>
-        <p className={styles.dashboardSubtitle}>Schedule live substance awareness sessions and submit session pulse data.</p>
+    <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
+      <div style={{ marginBottom: '32px' }}>
+        <h1 className="page-title">Sessions & Progression</h1>
+        <p className="page-subtitle">Schedule sessions for enrolled grades and track progress</p>
       </div>
 
-      <div className={styles.grid2Col}>
-        <Card title="Schedule Live Session">
-          <form onSubmit={handleScheduleSession} className={styles.listGroup}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Select Grade</label>
-              <select className={styles.select} value={newGrade} onChange={(e) => setNewGrade(e.target.value)}>
-                <option value="Grade 9">Grade 9</option>
-                <option value="Grade 10">Grade 10</option>
-                <option value="Grade 11">Grade 11</option>
-                <option value="Grade 12">Grade 12</option>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1.2fr',
+        gap: '24px',
+        alignItems: 'start'
+      }}>
+        
+        {/* Left Column: Schedule Session Form */}
+        <div className="card" style={{ padding: '28px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>📅</span> Schedule New Session
+          </h2>
+
+          <form onSubmit={handleScheduleSubmit}>
+            <div className="form-group">
+              <label className="form-label">Select Enrolled Grade</label>
+              <select 
+                className="form-input" 
+                value={selectedGrade} 
+                onChange={(e) => setSelectedGrade(e.target.value)}
+                required
+              >
+                {enrolledGrades.map(g => (
+                  <option key={g} value={g}>Grade {g}</option>
+                ))}
               </select>
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Session Module</label>
-              <select className={styles.select} value={newSession} onChange={(e) => setNewSession(e.target.value)}>
-                <option value="Session 1: Saying No">Session 1: Saying No (Pillar 1)</option>
-                <option value="Session 2: Boundaries">Session 2: Setting Boundaries (Pillar 2)</option>
-                <option value="Session 3: Substance Abuse">Session 3: Substance Abuse (Pillar 6)</option>
-              </select>
-            </div>
+            {/* Assessment Intercept Banner */}
+            {isAssessmentPending ? (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '12px',
+                padding: '18px',
+                marginBottom: '20px',
+                animation: 'fadeIn 0.3s ease-out'
+              }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', color: '#f87171', marginBottom: '10px' }}>
+                  <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: 700, margin: 0 }}>Baseline Questionnaire Required</h4>
+                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '4px', margin: 0 }}>
+                      Before scheduling a live awareness session for Grade {selectedGrade}, you must complete the Module Planning Questionnaire to determine the appropriate focus areas.
+                    </p>
+                  </div>
+                </div>
+                <Link 
+                  href={`/assessments/new?grade=${selectedGrade}`} 
+                  className="btn btn-primary w-full"
+                  style={{ justifyContent: 'center', fontSize: '13px', padding: '10px' }}
+                >
+                  <Sparkles size={15} style={{ marginRight: '6px' }} /> Start Baseline Questionnaire
+                </Link>
+              </div>
+            ) : (
+              <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                <div className="form-group">
+                  <label className="form-label">Session Type</label>
+                  <select 
+                    className="form-input" 
+                    value={sessionType} 
+                    onChange={(e) => setSessionType(e.target.value)}
+                    required
+                  >
+                    <option value="initial">Initial Session (Session 1)</option>
+                    <option value="follow_up">Follow-up Session (Session 2)</option>
+                    <option value="follow_through">Follow-through Session (Session 3)</option>
+                  </select>
+                </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Trainer Name / Pseudo Name</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Mentor Snape" 
-                className={styles.input}
-                value={newTrainer}
-                onChange={(e) => setNewTrainer(e.target.value)}
-                required
-              />
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Date</label>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      value={sessionDate} 
+                      onChange={(e) => setSessionDate(e.target.value)}
+                      required 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Start Time</label>
+                    <input 
+                      type="time" 
+                      className="form-input" 
+                      value={sessionTime} 
+                      onChange={(e) => setSessionTime(e.target.value)}
+                      required 
+                    />
+                  </div>
+                </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Scheduled Date</label>
-              <input 
-                type="date" 
-                className={styles.input}
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                required
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary w-full flex items-center justify-center gap-2">
-              <Plus size={18} /> Schedule Session
-            </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary w-full" 
+                  style={{ height: '42px', justifyContent: 'center', marginTop: '10px' }}
+                  disabled={scheduling}
+                >
+                  <Plus size={18} style={{ marginRight: '6px' }} /> 
+                  {scheduling ? 'Scheduling Session...' : 'Confirm Schedule'}
+                </button>
+              </div>
+            )}
           </form>
-        </Card>
+        </div>
 
-        <Card title="Current Session Schedule">
-          <div className={styles.listGroup}>
-            {sessions.map((session) => (
-              <div key={session.id} className={styles.listItem}>
-                <div className={styles.listInfo}>
-                  <p className={styles.listTitle}>{session.grade} - {session.sessionName}</p>
-                  <p className={styles.listMeta} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <span>Date: {session.date}</span>
-                    <span>Trainer: {session.trainer}</span>
-                    {session.attendance && <span>Attendees: {session.attendance}</span>}
-                  </p>
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <span className={`${styles.badge} ${
-                      session.status === 'Completed' 
-                        ? styles.badgeSuccess 
-                        : session.status === 'Scheduled' 
-                        ? styles.badgePrimary 
-                        : styles.badgeWarning
-                    }`}>
+        {/* Right Column: Sessions List */}
+        <div className="card" style={{ padding: '28px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>📋</span> Current Schedule
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {sessions.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                No sessions scheduled yet. Use the scheduler on the left to add one.
+              </div>
+            ) : (
+              sessions.map((session) => {
+                const sessionTypeLabel = session.session_type === 'initial' ? 'Session 1' : session.session_type === 'follow_up' ? 'Session 2' : 'Session 3';
+                const statusColors = {
+                  planned: { bg: 'rgba(99, 102, 241, 0.15)', text: 'var(--primary-400)' },
+                  scheduled: { bg: 'rgba(251, 191, 36, 0.15)', text: 'var(--warning-400)' },
+                  completed: { bg: 'rgba(16, 185, 129, 0.15)', text: 'var(--success-400)' },
+                };
+                const config = statusColors[session.status] || { bg: 'var(--bg-glass)', text: 'var(--text-secondary)' };
+
+                return (
+                  <div 
+                    key={session.id} 
+                    style={{
+                      padding: '16px 20px',
+                      borderRadius: '12px',
+                      background: 'var(--bg-glass)',
+                      border: '1px solid var(--border-subtle)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          Grade {session.grade}
+                        </span>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px',
+                          background: 'var(--bg-glass-strong)', border: '1px solid var(--border-subtle)'
+                        }}>
+                          {sessionTypeLabel}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Calendar size={13} /> {new Date(session.session_date).toLocaleDateString()}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={13} /> {session.start_time}
+                        </span>
+                        {session.mentor_aliases && (
+                          <span style={{ color: 'var(--text-tertiary)' }}>
+                            👥 Mentors: {session.mentor_aliases}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <span style={{
+                      fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '6px',
+                      background: config.bg, color: config.text, textTransform: 'capitalize'
+                    }}>
                       {session.status}
                     </span>
                   </div>
-                </div>
-                <div>
-                  {session.status === 'Scheduled' && (
-                    <button 
-                      className="btn btn-glass text-sm flex items-center gap-1"
-                      onClick={() => setActivePulseSessionId(session.id)}
-                    >
-                      <Award size={16} /> Log Pulse
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+                );
+              })
+            )}
           </div>
-        </Card>
+        </div>
+
       </div>
-
-      {activePulseSessionId && (
-        <Card title="Log Session Pulse Data">
-          <form onSubmit={handleSubmitPulse} className={styles.listGroup}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Student Attendance (Count)</label>
-              <input 
-                type="number" 
-                placeholder="e.g. 50" 
-                className={styles.input}
-                value={attendanceCount}
-                onChange={(e) => setAttendanceCount(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Principal's Qualitative Feedback</label>
-              <textarea 
-                placeholder="Provide a brief summary from the school principal..."
-                className={styles.input}
-                style={{ minHeight: '80px', fontFamily: 'inherit', resize: 'vertical' }}
-                value={principalFeedback}
-                onChange={(e) => setPrincipalFeedback(e.target.value)}
-                required
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="submit" className="btn btn-primary flex-1 flex justify-center items-center gap-2">
-                <Check size={18} /> Submit Pulse Feedback
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-glass"
-                onClick={() => setActivePulseSessionId(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </Card>
-      )}
     </div>
   );
 }
