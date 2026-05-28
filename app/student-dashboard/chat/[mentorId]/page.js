@@ -102,12 +102,12 @@ export default function ChatRoom() {
            ← 
         </Link>
         <img 
-          src={mentor.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.full_name)}&background=10b981&color=fff&bold=true`} 
+          src={mentor.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.pseudo_name || 'Anonymous Mentor')}&background=10b981&color=fff&bold=true`} 
           alt="Mentor Avatar"
           style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid var(--success-400)' }}
         />
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>{mentor.full_name}</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>{mentor.pseudo_name || 'Anonymous Mentor'}</h2>
           <div className="live-indicator">Online</div>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function ChatRoom() {
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', maxWidth: '80%' }}>
                 {!isStudent && (
                    <img 
-                     src={mentor.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.full_name)}&background=10b981&color=fff&bold=true`} 
+                     src={mentor.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.pseudo_name || 'Anonymous Mentor')}&background=10b981&color=fff&bold=true`} 
                      alt="Mentor"
                      style={{ width: '28px', height: '28px', borderRadius: '50%' }}
                    />

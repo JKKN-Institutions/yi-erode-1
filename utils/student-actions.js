@@ -20,7 +20,6 @@ export async function getStudentData() {
       *,
       mentor:assigned_mentor_id (
         id,
-        full_name,
         avatar_url,
         pseudo_name
       )
@@ -115,3 +114,26 @@ export async function requestMentorChange() {
   revalidatePath('/student-dashboard');
   return { success: true };
 }
+
+/**
+ * Get list of available mentors for students (securely returns only pseudo names)
+ */
+export async function getMentorsForStudents() {
+  const auth = await getServerRole();
+  if (!auth.user || (auth.role !== 'learner' && auth.role !== 'student')) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, avatar_url, pseudo_name')
+    .eq('role', 'mentor');
+
+  if (error) {
+    console.error("Error fetching mentors for student:", error.message);
+    return [];
+  }
+  return data || [];
+}
+

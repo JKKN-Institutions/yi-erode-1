@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStudentData, chooseMentor, requestMentorChange, chooseSchool } from "@/utils/student-actions";
-import { getAllMentorsWithAllocations } from "@/utils/admin-mentor-actions";
+import { getStudentData, chooseMentor, requestMentorChange, chooseSchool, getMentorsForStudents } from "@/utils/student-actions";
 import { getSchools } from "@/utils/school-actions";
 import Link from "next/link";
 
@@ -32,7 +31,7 @@ export default function StudentDashboard() {
       try {
         const [studentRes, mentorsRes, schoolsRes] = await Promise.all([
           getStudentData(),
-          getAllMentorsWithAllocations(),
+          getMentorsForStudents(),
           getSchools()
         ]);
         
@@ -209,7 +208,7 @@ export default function StudentDashboard() {
               </p>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
-                {mentors.filter(m => m.role === 'mentor').map(mentor => (
+                {mentors.map(mentor => (
                   <button 
                     key={mentor.id}
                     onClick={() => handleChooseMentor(mentor.id)}
@@ -217,7 +216,7 @@ export default function StudentDashboard() {
                     style={{ textAlign: 'left', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid var(--border-subtle)' }}
                   >
                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--primary-400)', flexShrink: 0 }}>
-                      {(mentor.pseudo_name || mentor.full_name || 'M')[0]}
+                      {(mentor.pseudo_name || 'M')[0]}
                     </div>
                     <div style={{ flex: 1 }}>
                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{mentor.pseudo_name || 'Anonymous Mentor'}</div>
@@ -241,7 +240,7 @@ export default function StudentDashboard() {
                 flexWrap: 'wrap'
               }}>
                 <img 
-                  src={data.mentor?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.mentor?.pseudo_name || data.mentor?.full_name || 'M')}&background=10b981&color=fff&bold=true`} 
+                  src={data.mentor?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.mentor?.pseudo_name || 'M')}&background=10b981&color=fff&bold=true`} 
                   alt="Mentor Avatar"
                   style={{ width: '80px', height: '80px', borderRadius: '20px', objectFit: 'cover' }}
                 />
