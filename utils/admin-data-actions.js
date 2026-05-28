@@ -98,3 +98,89 @@ export async function getLearnersList() {
 
   return enrichWithEmails(supabase, data);
 }
+
+// 4. Fetch process tracking data for all schools
+export async function getSchoolsProcessTracking() {
+  const supabase = await createClient();
+  
+  // 1. Fetch all schools
+  const { data: schools, error: schoolsError } = await supabase
+    .from('schools')
+    .select('id, name, district, board_type, contact_person, grades')
+    .order('name');
+    
+  if (schoolsError) {
+    console.error("Error fetching schools for tracking:", schoolsError.message);
+    return [];
+  }
+  
+  // 2. Fetch all grade statuses
+  const { data: gradeStatuses, error: statusesError } = await supabase
+    .from('school_grade_status')
+    .select('*');
+    
+  // 3. Fetch all sessions with their assigned mentors (via session_mentors)
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('sessions')
+    .select(`
+      *,
+      session_mentors (
+        mentor_id,
+        profiles:mentor_id (full_name, pseudo_name)
+      )
+    `);
+    
+  const statusesMap = {}; // key: schoolId_grade
+  gradeStatuses?.forEach(gs => {
+    statusesMap[`${gs.school_id}_${gs.grade}`] = gs;
+  });
+  
+  const sessionsMap = {}; // key: schoolId_grade
+  sessions?.forEach(s => {
+    const key = `${s.school_id}_${s.grade}`;
+    if (!sessionsMap[key]) {
+      sessionsMap[key] = [];
+    }
+    sessionsMap[key].push(s);
+  });
+  
+  return schools.map(school => {
+    // For each school, compile its grades progress
+    const gradesProgress = (school.grades || []).map(grade => {
+      const key = `${school.id}_${grade}`;
+      const statusRecord = statusesMap[key];
+      const gradeSessions = sessionsMap[key] || [];
+      
+      return {
+        grade,
+        status: statusRecord?.status || 'registered',
+        moduleCode: statusRecord?.module_code || null,
+        categoryA: statusRecord?.category_a || null,
+        categoryB: statusRecord?.category_b || null,
+        sessions: gradeSessions.map(s => ({
+          id: s.id,
+          type: s.session_type,
+          date: s.session_date,
+          time: s.start_time,
+          status: s.status,
+          attendance: (s.learner_count !== null && s.learner_count !== undefined) ? {
+            attended: s.learner_count,
+            strength: s.learner_details?.student_strength || 0,
+            absentees: s.learner_details?.absentees || ''
+          } : null,
+          feedback: s.principal_feedback || null,
+          mentors: s.session_mentors?.map(sm => sm.profiles?.pseudo_name || sm.profiles?.full_name).filter(Boolean).join(', ') || s.mentor_aliases || ''
+        }))
+      };
+    });
+    
+    return {
+      id: school.id,
+      name: school.name,
+      district: school.district,
+      boardType: school.board_type,
+      contactPerson: school.contact_person,
+      grades: gradesProgress
+    };
+  });
+}

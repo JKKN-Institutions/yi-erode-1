@@ -162,6 +162,13 @@ export default function AdminOverviewPage() {
             <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "12px" }}>Coordinators List & Details</p>
           </div>
         </Link>
+        <Link href="/admin-dashboard/schools-process" className="card action-card" style={{ display: "flex", alignItems: "center", gap: "16px", textDecoration: "none" }}>
+          <div className="action-icon" style={{ background: "var(--accent-glow)", color: "var(--accent-400)" }}>📈</div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '16px' }}>School Process Tracker</h3>
+            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "12px" }}>Monitor scheduling, attendance & feedback closeouts</p>
+          </div>
+        </Link>
         <Link href="/admin-dashboard/mentors-list" className="card action-card" style={{ display: "flex", alignItems: "center", gap: "16px", textDecoration: "none" }}>
           <div className="action-icon" style={{ background: "var(--purple-glow)", color: "var(--purple-400)" }}>🧑‍⚕️</div>
           <div>
