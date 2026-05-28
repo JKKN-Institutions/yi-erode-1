@@ -301,7 +301,7 @@ export async function saveSessionAttendance(sessionId, { student_strength, atten
   
   const { data: session, error: getError } = await supabase
     .from('sessions')
-    .select('learner_details')
+    .select('grade, learner_details, schools:school_id(name)')
     .eq('id', sessionId)
     .single();
     
@@ -333,6 +333,13 @@ export async function saveSessionAttendance(sessionId, { student_strength, atten
     return { success: false, error: error.message };
   }
   
+  try {
+    const schoolName = session?.schools?.name || 'School';
+    await logActivity('Logged Session Attendance', `Logged attendance for Grade ${session.grade} at ${schoolName}: ${attended_count}/${student_strength} students.`);
+  } catch (e) {
+    console.warn("Non-fatal logging error:", e.message);
+  }
+  
   revalidatePath('/school-dashboard/attendance');
   revalidatePath('/school-dashboard/sessions');
   return { success: true };
@@ -344,6 +351,17 @@ export async function saveSessionAttendance(sessionId, { student_strength, atten
 export async function saveSessionFeedback(sessionId, { principal_feedback, impact_feedback, impact_summary }) {
   const supabase = await createAdminClient();
   
+  // Fetch session info for logging
+  let sessionInfo = null;
+  try {
+    const { data } = await supabase
+      .from('sessions')
+      .select('grade, schools:school_id(name)')
+      .eq('id', sessionId)
+      .single();
+    sessionInfo = data;
+  } catch (e) {}
+
   const { error } = await supabase
     .from('sessions')
     .update({
@@ -357,6 +375,14 @@ export async function saveSessionFeedback(sessionId, { principal_feedback, impac
   if (error) {
     console.error('Error updating session feedback:', error.message);
     return { success: false, error: error.message };
+  }
+  
+  try {
+    const schoolName = sessionInfo?.schools?.name || 'School';
+    const gradeVal = sessionInfo?.grade || '—';
+    await logActivity('Submitted Session Feedback', `Logged principal feedback & follow-up closure for Grade ${gradeVal} at ${schoolName}.`);
+  } catch (e) {
+    console.warn("Non-fatal logging error:", e.message);
   }
   
   revalidatePath('/school-dashboard/feedback');
