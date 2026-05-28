@@ -88,6 +88,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     // Close sidebar on navigation (mobile)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobileOpen(false)
   }, [pathname])
 

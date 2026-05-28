@@ -13,16 +13,17 @@ export default function SchoolsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadSchools();
-  }, []);
-
   async function loadSchools() {
     setLoading(true);
     const data = await getSchools();
     setSchools(data || []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadSchools();
+  }, []);
 
   const statusConfig = {
     completed: { label: 'Completed', class: 'badge-success', icon: '✓' },

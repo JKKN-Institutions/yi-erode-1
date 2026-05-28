@@ -42,7 +42,7 @@ export default function FeedbackFormPage() {
           </form>
         ) : step === 2 ? (
           <form onSubmit={(e) => { e.preventDefault(); setStep(3); }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '24px' }}>Rate the session's impact on the Six Pillars (1-5)</h3>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '24px' }}>Rate the {"session's"} impact on the Six Pillars (1-5)</h3>
             
             {[
               { id: 'p1', name: "Saying No", emoji: "🚫" },

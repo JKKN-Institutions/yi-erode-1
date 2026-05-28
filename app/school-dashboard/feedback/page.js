@@ -43,6 +43,7 @@ export default function SchoolFeedbackPage() {
 
   useEffect(() => {
     loadSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSessionChange = (sessionId) => {
@@ -94,7 +95,7 @@ export default function SchoolFeedbackPage() {
           <div style={{ fontSize: '3rem', marginBottom: '16px' }}>💬</div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>No Sessions Found</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6 }}>
-            You haven't scheduled any sessions yet. Please schedule a session before submitting feedback.
+            You {"haven't"} scheduled any sessions yet. Please schedule a session before submitting feedback.
           </p>
         </div>
       </div>
@@ -143,7 +144,7 @@ export default function SchoolFeedbackPage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Principal's Qualitative Feedback</label>
+              <label className="form-label">{"Principal's"} Qualitative Feedback</label>
               <textarea 
                 placeholder="Qualitative observations or evaluation from the school principal..."
                 className="form-input"

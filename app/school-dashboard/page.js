@@ -47,11 +47,11 @@ export default function SchoolDashboard() {
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>⏳</div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '12px' }}>Waiting for Assignment</h1>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.6 }}>
-            Hello {user?.name || 'there'}! Your account has the <strong>School Coordinator</strong> role, but you haven't been assigned to a specific school yet.
+            Hello {user?.name || 'there'}! Your account has the <strong>School Coordinator</strong> role, but you {"haven't"} been assigned to a specific school yet.
           </p>
           <div style={{ padding: '16px', background: 'var(--bg-glass)', borderRadius: '12px', border: '1px solid var(--border-subtle)', textAlign: 'left', marginBottom: '24px' }}>
             <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-tertiary)' }}>
-              <strong>Next Steps:</strong> Please contact the Mission ON Admin to link your account to your school. Once linked, you can access your school's dashboard.
+              <strong>Next Steps:</strong> Please contact the Mission ON Admin to link your account to your school. Once linked, you can access your {"school's"} dashboard.
             </p>
           </div>
           <Link href="/" className="btn btn-secondary">Return to Home</Link>

@@ -8,15 +8,16 @@ export default function AdminNotesPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadNotes();
-  }, []);
-
   async function loadNotes() {
     const data = await fetchAdminNotes();
     setNotes(data || []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadNotes();
+  }, []);
 
   async function handleSubmit(e, parentId = null) {
     e.preventDefault();

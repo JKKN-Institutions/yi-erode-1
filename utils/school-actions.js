@@ -356,7 +356,7 @@ export async function saveSessionFeedback(sessionId, { principal_feedback, impac
   try {
     const { data } = await supabase
       .from('sessions')
-      .select('grade, schools:school_id(name)')
+      .select('school_id, grade, schools:school_id(name)')
       .eq('id', sessionId)
       .single();
     sessionInfo = data;
@@ -375,6 +375,18 @@ export async function saveSessionFeedback(sessionId, { principal_feedback, impac
   if (error) {
     console.error('Error updating session feedback:', error.message);
     return { success: false, error: error.message };
+  }
+  
+  if (sessionInfo) {
+    try {
+      await supabase
+        .from('school_grade_status')
+        .update({ status: 'completed' })
+        .eq('school_id', sessionInfo.school_id)
+        .eq('grade', sessionInfo.grade);
+    } catch (e) {
+      console.warn("Non-fatal error updating school_grade_status status:", e.message);
+    }
   }
   
   try {

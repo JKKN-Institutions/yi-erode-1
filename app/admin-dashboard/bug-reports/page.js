@@ -11,16 +11,17 @@ export default function BugReportsPage() {
   const [response, setResponse] = useState('');
   const [newStatus, setNewStatus] = useState('');
 
-  useEffect(() => {
-    loadReports();
-  }, []);
-
   async function loadReports() {
     setLoading(true);
     const data = await getAllBugReports();
     setReports(data || []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadReports();
+  }, []);
 
   const handleUpdate = async (reportId) => {
     if (!newStatus) return;

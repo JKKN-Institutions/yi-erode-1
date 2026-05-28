@@ -14,6 +14,7 @@ export function ThemeProvider({ children }) {
     // Check if there is a saved theme
     const savedTheme = localStorage.getItem("app-theme");
     if (savedTheme) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(savedTheme);
       document.documentElement.classList.add(savedTheme);
     } else {

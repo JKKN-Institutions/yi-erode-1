@@ -212,9 +212,9 @@ export default function SchedulePage() {
 
              {modalStep === 3 && (
                <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Step 3: Principal's Feedback</h3>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Step 3: {"Principal's"} Feedback</h3>
                   <div className="form-group">
-                    <label className="form-label">Principal's Comments & Evaluation</label>
+                    <label className="form-label">{"Principal's"} Comments & Evaluation</label>
                     <textarea className="form-input" style={{ minHeight: '150px' }} value={formData.principal_feedback} onChange={e => setFormData({...formData, principal_feedback: e.target.value})} placeholder="To be entered by the Principal of the school..." />
                   </div>
                   <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>

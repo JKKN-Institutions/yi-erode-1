@@ -486,6 +486,7 @@ function ProfileSection({ profile, user, onUpdate }) {
 
   useEffect(() => {
     if (profile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         full_name: profile.full_name || '',
         phone: profile.phone || '',

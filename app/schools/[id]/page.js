@@ -280,7 +280,7 @@ export default async function SchoolDetailPage({ params }) {
                           }}>
                             <div style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>💬 Feedback & Follow-up</div>
                             <p style={{ margin: '4px 0 0 0', italic: 'true', color: 'var(--text-primary)' }}>
-                              "{s.principal_feedback}"
+                              &quot;{s.principal_feedback}&quot;
                             </p>
                             {s.post_intervention_feedback_1 && (
                               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
