@@ -101,7 +101,8 @@ export async function submitAssessment(formData) {
         grade: grade,
         status: 'assessed',
         module_code: moduleCode,
-        last_assessment_id: assessment.id,
+        category_a: categoryA,
+        category_b: categoryB,
         updated_at: new Date().toISOString()
       }, { onConflict: 'school_id, grade' });
 
