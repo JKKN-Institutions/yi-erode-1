@@ -89,7 +89,7 @@ export async function getLearnersList() {
       assigned_mentor_id,
       mentor:assigned_mentor_id (pseudo_name, full_name)
     `)
-    .eq('role', 'student');
+    .in('role', ['learner', 'student']);
     
   if (error) {
     console.error("Error fetching learners:", error);

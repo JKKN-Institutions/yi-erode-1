@@ -28,8 +28,8 @@ export default function RoleTable({ initialProfiles }) {
     if (newRole !== 'school_coordinator') {
       updates.school_id = null;
     }
-    // If switching AWAY from student, clear mentor info
-    if (newRole !== 'student') {
+    // If switching AWAY from learner, clear mentor info
+    if (newRole !== 'learner' && newRole !== 'student') {
       updates.assigned_mentor_id = null;
       updates.mentor_change_status = 'none';
     }
@@ -103,8 +103,9 @@ export default function RoleTable({ initialProfiles }) {
     admin: { bg: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.2)', text: '#ef4444', label: 'Administrator' },
     school_coordinator: { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.2)', text: '#f59e0b', label: 'Coordinator' },
     mentor: { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.2)', text: '#10b981', label: 'Mentor' },
-    student: { bg: 'rgba(99, 102, 241, 0.08)', border: 'rgba(99, 102, 241, 0.2)', text: '#6366f1', label: 'Student' },
-    unassigned: { bg: 'rgba(113, 113, 122, 0.08)', border: 'rgba(113, 113, 122, 0.2)', text: '#71717a', label: 'Unassigned' },
+    learner: { bg: 'rgba(99, 102, 241, 0.08)', border: 'rgba(99, 102, 241, 0.2)', text: '#6366f1', label: 'Learner' },
+    student: { bg: 'rgba(99, 102, 241, 0.08)', border: 'rgba(99, 102, 241, 0.2)', text: '#6366f1', label: 'Learner' },
+    unassigned: { bg: 'rgba(113, 113, 122, 0.08)', border: 'rgba(113, 113, 122, 0.2)', text: '#71717a', label: 'Learner' },
   };
 
   return (
@@ -135,7 +136,7 @@ export default function RoleTable({ initialProfiles }) {
             </thead>
             <tbody>
               {profiles.map((profile) => {
-                const currentRole = roleColors[profile.role] || roleColors.unassigned;
+                const currentRole = roleColors[profile.role] || roleColors.learner;
                 return (
                   <tr key={profile.id} style={{
                     background: successId === profile.id ? 'rgba(16, 185, 129, 0.04)' : undefined,
@@ -182,7 +183,7 @@ export default function RoleTable({ initialProfiles }) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <select
-                            value={profile.role || 'unassigned'}
+                            value={(profile.role === 'student' || profile.role === 'unassigned' || !profile.role) ? 'learner' : profile.role}
                             onChange={(e) => handleRoleChange(profile.id, e.target.value)}
                             disabled={loadingId === profile.id}
                             style={{
@@ -201,8 +202,7 @@ export default function RoleTable({ initialProfiles }) {
                             <option value="admin">🔐 Administrator</option>
                             <option value="school_coordinator">🏫 School Coordinator</option>
                             <option value="mentor">👤 Mentor</option>
-                            <option value="student">🎓 Student</option>
-                            <option value="unassigned">⏳ Unassigned</option>
+                            <option value="learner">🎓 Learner</option>
                           </select>
                           {loadingId === profile.id && (
                             <span style={{ fontSize: '11px', color: 'var(--primary-400)', fontWeight: 600 }}>Saving...</span>
@@ -243,7 +243,7 @@ export default function RoleTable({ initialProfiles }) {
                           </div>
                         )}
 
-                        {profile.role === 'student' && profile.mentor_change_status === 'requested' && (
+                        {(profile.role === 'learner' || profile.role === 'student') && profile.mentor_change_status === 'requested' && (
                           <div style={{ 
                             marginTop: '8px', 
                             padding: '10px', 

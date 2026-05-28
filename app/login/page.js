@@ -2,36 +2,62 @@
 
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { setDevRole } from '@/utils/auth';
 import styles from './login.module.css';
 
+// MOCK_AUTH only enables the dev role-picker buttons. The Google button
+// always runs the real Supabase OAuth flow regardless of this flag.
+const MOCK_AUTH = process.env.NEXT_PUBLIC_MOCK_AUTH === 'true';
 
+const DASHBOARD_FOR_ROLE = {
+  admin: '/admin-dashboard',
+  mentor: '/mentor-dashboard',
+  school_coordinator: '/school-dashboard',
+  learner: '/student-dashboard',
+};
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
   const supabase = createClient();
+
+  const handleMockLogin = (role) => {
+    setIsLoading(true);
+    setDevRole(role);
+    window.location.href = DASHBOARD_FOR_ROLE[role] || '/student-dashboard';
+  };
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
-      document.cookie = `dev_role=admin; path=/; max-age=${60 * 60 * 24 * 30}`;
-      const mockUser = { name: 'Yi Administrator', email: 'admin@yierode.org', role: 'admin' };
-      document.cookie = `dev_user=${encodeURIComponent(JSON.stringify(mockUser))}; path=/; max-age=${60 * 60 * 24 * 30}`;
-      window.location.href = '/admin-dashboard';
-      return;
-    }
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      console.error('Error logging in:', error.message);
+    setErrorMsg(null);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+      if (error) {
+        console.error('OAuth error:', error.message);
+        setErrorMsg(error.message);
+        setIsLoading(false);
+        return;
+      }
+      // signInWithOAuth normally redirects the browser itself; if we somehow
+      // got back a URL without a redirect, navigate manually.
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (e) {
+      console.error('OAuth threw:', e);
+      setErrorMsg(e?.message || 'Login failed. Check Supabase Google provider config.');
       setIsLoading(false);
     }
   };
-
-
 
   return (
     <div className={styles.container}>
@@ -48,7 +74,6 @@ export default function LoginPage() {
 
         <div className={styles.divider}></div>
 
-        {/* Google OAuth Login — Primary */}
         <div>
           <button
             onClick={handleGoogleLogin}
@@ -77,6 +102,46 @@ export default function LoginPage() {
           </button>
         </div>
 
+        {errorMsg && (
+          <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5', fontSize: '12px' }}>
+            {errorMsg}
+          </div>
+        )}
+
+        {MOCK_AUTH && (
+          <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(99,102,241,0.06)', border: '1px dashed rgba(99,102,241,0.2)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary-400)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
+              Dev only — Mock role
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              {[
+                { role: 'admin', label: '🔐 Admin' },
+                { role: 'learner', label: '🎓 Learner' },
+                { role: 'mentor', label: '🧑‍⚕️ Mentor' },
+                { role: 'school_coordinator', label: '🏫 Coordinator' },
+              ].map(opt => (
+                <button
+                  key={opt.role}
+                  onClick={() => handleMockLogin(opt.role)}
+                  disabled={isLoading}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '8px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className={styles.features}>
           <div className={styles.featureItem}>
             <span className={styles.featureIcon}>🔒</span>
@@ -97,8 +162,6 @@ export default function LoginPage() {
             For authorized chapter members and mentors only
           </p>
         </div>
-
-
       </div>
 
       <style jsx>{`
@@ -109,4 +172,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

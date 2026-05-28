@@ -9,7 +9,7 @@ import { getServerRole } from "./auth-server";
  */
 export async function getStudentData() {
   const auth = await getServerRole();
-  if (!auth.user || auth.role !== 'student') {
+  if (!auth.user || (auth.role !== 'learner' && auth.role !== 'student')) {
     return { error: "Unauthorized" };
   }
 
@@ -37,7 +37,7 @@ export async function getStudentData() {
  */
 export async function chooseSchool(schoolId) {
   const auth = await getServerRole();
-  if (!auth.user || auth.role !== 'student') {
+  if (!auth.user || (auth.role !== 'learner' && auth.role !== 'student')) {
     return { error: "Unauthorized" };
   }
 
@@ -61,7 +61,7 @@ export async function chooseSchool(schoolId) {
  */
 export async function chooseMentor(mentorId) {
   const auth = await getServerRole();
-  if (!auth.user || auth.role !== 'student') {
+  if (!auth.user || (auth.role !== 'learner' && auth.role !== 'student')) {
     return { error: "Unauthorized" };
   }
 
@@ -97,7 +97,7 @@ export async function chooseMentor(mentorId) {
  */
 export async function requestMentorChange() {
   const auth = await getServerRole();
-  if (!auth.user || auth.role !== 'student') {
+  if (!auth.user || (auth.role !== 'learner' && auth.role !== 'student')) {
     return { error: "Unauthorized" };
   }
 

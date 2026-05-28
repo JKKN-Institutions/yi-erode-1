@@ -58,7 +58,7 @@ const schoolNav = [
   },
 ]
 
-const studentNav = [
+const learnerNav = [
   {
     section: 'Overview',
     items: [
@@ -87,7 +87,15 @@ export default function Sidebar() {
   }, [pathname])
 
   useEffect(() => {
-    // Check Supabase first
+    // Seed from dev cookie immediately so the sidebar doesn't render the wrong nav
+    // while the Supabase call is in flight (was previously a refresh-looking flash).
+    const initialRole = getDevRole();
+    if (initialRole) {
+      setRole(initialRole);
+      setUser(getDevUser());
+    }
+
+    // Always try Supabase too — a real Google session must trump the dev cookie.
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user: sbUser } }) => {
       if (sbUser) {
@@ -96,50 +104,59 @@ export default function Sidebar() {
           .select('role')
           .eq('id', sbUser.id)
           .single();
-        
-        // If logged in via Supabase, we strictly use the DB role or default to unassigned.
-        // We do NOT fall back to dev cookies here.
-        setRole(profile?.role || 'unassigned');
-        setUser({ 
-          name: sbUser.user_metadata?.full_name, 
-          email: sbUser.email, 
-          avatar: sbUser.user_metadata?.avatar_url 
+
+        const dbRole = profile?.role;
+        const normalized = !dbRole || dbRole === 'student' || dbRole === 'unassigned' ? 'learner' : dbRole;
+        setRole(normalized);
+        setUser({
+          name: sbUser.user_metadata?.full_name,
+          email: sbUser.email,
+          avatar: sbUser.user_metadata?.avatar_url,
         });
-      } else {
-        // Fallback to dev cookies ONLY if no Supabase user is logged in
+      } else if (!initialRole) {
         setRole(getDevRole());
         setUser(getDevUser());
       }
     }).catch(() => {
-      // General error fallback
-      setRole(getDevRole());
-      setUser(getDevUser());
+      if (!initialRole) {
+        setRole(getDevRole());
+        setUser(getDevUser());
+      }
     });
   }, [])
 
   useEffect(() => {
-    if (role === 'admin') {
-      getAdminDashboardStats().then(stats => {
-        setAdminStats(stats);
-      }).catch(err => console.error("Error loading sidebar stats", err));
-    }
+    if (role !== 'admin') return;
+    let cancelled = false;
+    getAdminDashboardStats().then(stats => {
+      if (!cancelled) setAdminStats(stats);
+    }).catch(err => console.error("Error loading sidebar stats", err));
+    return () => { cancelled = true; };
   }, [role])
 
   if (pathname === '/login' || pathname.startsWith('/auth')) {
     return null
   }
 
-  const navItems = role === 'admin' ? adminNav : role === 'mentor' ? mentorNav : role === 'student' ? studentNav : schoolNav
+  const isLearner = role === 'learner' || role === 'student' || role === 'unassigned';
+
+  const navItems =
+    role === 'admin' ? adminNav :
+    role === 'mentor' ? mentorNav :
+    role === 'school_coordinator' ? schoolNav :
+    isLearner ? learnerNav :
+    learnerNav;
 
   const roleDisplay = {
     admin: { label: 'Administrator', color: '#818cf8' },
     school_coordinator: { label: 'Coordinator', color: '#fbbf24' },
     mentor: { label: 'Mentor', color: '#34d399' },
+    learner: { label: 'Learner', color: '#6366f1' },
     student: { label: 'Learner', color: '#6366f1' },
-    unassigned: { label: 'Learner', color: '#6366f1' }, // Fallback gracefully if db has unassigned
+    unassigned: { label: 'Learner', color: '#6366f1' },
   }
 
-  const currentRole = roleDisplay[role] || roleDisplay.admin
+  const currentRole = roleDisplay[role] || roleDisplay.learner
 
   const handleSignOut = async () => {
     clearDevRole()

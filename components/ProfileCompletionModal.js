@@ -1,34 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { checkProfileCompletion, updateProfileDetails } from "@/utils/profile-actions";
 
 export default function ProfileCompletionModal() {
+  const pathname = usePathname();
+  const ranRef = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      const { requireCompletion, profile: userProfile } = await checkProfileCompletion();
-      if (requireCompletion) {
-        setProfile(userProfile);
-        setIsOpen(true);
-      }
-      setLoading(false);
-    }
-    load();
-  }, []);
+  const shouldSkip =
+    !pathname ||
+    pathname === '/' ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/pending');
 
-  if (loading || !isOpen || !profile) return null;
+  useEffect(() => {
+    if (shouldSkip || ranRef.current) return;
+    ranRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { requireCompletion, profile: userProfile } = await checkProfileCompletion();
+        if (cancelled) return;
+        if (requireCompletion) {
+          setProfile(userProfile);
+          setIsOpen(true);
+        }
+      } catch (e) {
+        console.warn('Profile completion check failed:', e?.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [shouldSkip]);
+
+  if (!isOpen || !profile) return null;
+
+  const isLearner = profile.role === 'learner' || profile.role === 'student';
 
   async function handleSubmit(e) {
     e.preventDefault();
     setSaving(true);
     const formData = new FormData(e.target);
     const res = await updateProfileDetails(formData);
-    
+
     if (res.success) {
       setIsOpen(false);
     } else {
@@ -49,12 +68,12 @@ export default function ProfileCompletionModal() {
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>👋</div>
           <h2 style={{ fontSize: '24px', fontWeight: 800 }}>Complete Your Profile</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '8px' }}>
-            Before accessing the dashboard, please provide a few details for your {profile.role} role.
+            Before accessing the dashboard, please provide a few details for your {isLearner ? 'learner' : profile.role} role.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
+
           {(profile.role === 'mentor' || profile.role === 'school_coordinator') && (
             <div>
               <label className="form-label" style={{ fontWeight: 600 }}>Phone Number <span style={{color:'var(--error-400)'}}>*</span></label>
@@ -80,7 +99,7 @@ export default function ProfileCompletionModal() {
             </>
           )}
 
-          {profile.role === 'student' && (
+          {isLearner && (
             <div>
               <label className="form-label" style={{ fontWeight: 600 }}>Academic Class / Grade <span style={{color:'var(--error-400)'}}>*</span></label>
               <select name="academic_class" required className="form-input" defaultValue={profile.academic_class || ''}>

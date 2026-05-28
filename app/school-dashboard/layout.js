@@ -4,10 +4,11 @@ import { redirect } from 'next/navigation';
 
 export default async function SchoolDashboardLayout({ children }) {
   const { role } = await getServerRole();
-  
-  if (!role) {
-    redirect('/login');
-  }
+
+  if (!role) redirect('/login');
+  if (role === 'admin') redirect('/admin-dashboard');
+  if (role === 'mentor') redirect('/mentor-dashboard');
+  if (role !== 'school_coordinator') redirect('/student-dashboard');
 
   return (
     <div className="app-layout">

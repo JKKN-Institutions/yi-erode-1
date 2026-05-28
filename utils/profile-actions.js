@@ -1,12 +1,11 @@
 "use server";
 
 import { createClient } from "./supabase/server";
-import { revalidatePath } from "next/cache";
 
 export async function checkProfileCompletion() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   if (!user) return { requireCompletion: false };
 
   const { data: profile } = await supabase
@@ -17,15 +16,18 @@ export async function checkProfileCompletion() {
 
   if (!profile) return { requireCompletion: false };
 
-  // Logic to determine if fields are missing based on role
+  // Admins never need profile completion.
+  if (profile.role === 'admin') return { requireCompletion: false, profile };
+
+  const isLearner = profile.role === 'learner' || profile.role === 'student';
+
   let requireCompletion = false;
-  let missingFields = [];
 
   if (profile.role === 'mentor') {
     if (!profile.course || !profile.college || !profile.phone || !profile.pseudo_name) {
       requireCompletion = true;
     }
-  } else if (profile.role === 'student') {
+  } else if (isLearner) {
     if (!profile.academic_class) {
       requireCompletion = true;
     }
@@ -41,12 +43,11 @@ export async function checkProfileCompletion() {
 export async function updateProfileDetails(formData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   if (!user) return { success: false, error: "Not logged in" };
 
   const updatePayload = { updated_at: new Date().toISOString() };
-  
-  // Extract all potential fields
+
   const fields = ['phone', 'course', 'college', 'pseudo_name', 'academic_class'];
   fields.forEach(f => {
     if (formData.get(f)) {
@@ -64,7 +65,8 @@ export async function updateProfileDetails(formData) {
     return { success: false, error: error.message };
   }
 
-  // Revalidate everything
-  revalidatePath('/', 'layout');
+  // Intentionally not calling revalidatePath('/', 'layout') here — revalidating
+  // the root layout caused the modal/sidebar to remount on every page change,
+  // which surfaced as a continuous refresh loop for some sessions.
   return { success: true };
 }
