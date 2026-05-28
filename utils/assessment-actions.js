@@ -120,6 +120,19 @@ export async function submitAssessment(formData) {
   }
 }
 
+function calculateEndTime(startTimeStr) {
+  if (!startTimeStr) return '11:00';
+  try {
+    const parts = startTimeStr.split(':');
+    let hours = parseInt(parts[0]);
+    let minutes = parts[1] || '00';
+    hours = (hours + 1) % 24;
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  } catch (e) {
+    return '11:00';
+  }
+}
+
 export async function scheduleSession(scheduleData) {
   try {
     const supabase = await createAdminClient();
@@ -137,6 +150,7 @@ export async function scheduleSession(scheduleData) {
         session_type: scheduleData.type || 'initial',
         session_date: scheduleData.date,
         start_time: scheduleData.time,
+        end_time: calculateEndTime(scheduleData.time),
         status: 'planned'
       }]);
 
