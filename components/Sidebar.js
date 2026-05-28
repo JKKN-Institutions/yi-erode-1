@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { getDevRole, getDevUser, clearDevRole } from '@/utils/auth'
+import { clearDevRole } from '@/utils/auth'
 import { createClient } from '@/utils/supabase/client'
 import { getAdminDashboardStats } from '@/utils/admin-actions'
 
@@ -87,15 +87,7 @@ export default function Sidebar() {
   }, [pathname])
 
   useEffect(() => {
-    // Seed from dev cookie immediately so the sidebar doesn't render the wrong nav
-    // while the Supabase call is in flight (was previously a refresh-looking flash).
-    const initialRole = getDevRole();
-    if (initialRole) {
-      setRole(initialRole);
-      setUser(getDevUser());
-    }
-
-    // Always try Supabase too — a real Google session must trump the dev cookie.
+    // Try Supabase session — a real Google session must determine the role.
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user: sbUser } }) => {
       if (sbUser) {
@@ -113,15 +105,9 @@ export default function Sidebar() {
           email: sbUser.email,
           avatar: sbUser.user_metadata?.avatar_url,
         });
-      } else if (!initialRole) {
-        setRole(getDevRole());
-        setUser(getDevUser());
       }
-    }).catch(() => {
-      if (!initialRole) {
-        setRole(getDevRole());
-        setUser(getDevUser());
-      }
+    }).catch((err) => {
+      console.warn("Sidebar session check failed:", err?.message);
     });
   }, [])
 

@@ -2,12 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { setDevRole } from '@/utils/auth';
 import styles from './login.module.css';
-
-// MOCK_AUTH only enables the dev role-picker buttons. The Google button
-// always runs the real Supabase OAuth flow regardless of this flag.
-const MOCK_AUTH = process.env.NEXT_PUBLIC_MOCK_AUTH === 'true';
 
 const DASHBOARD_FOR_ROLE = {
   admin: '/admin-dashboard',
@@ -20,12 +15,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const supabase = createClient();
-
-  const handleMockLogin = (role) => {
-    setIsLoading(true);
-    setDevRole(role);
-    window.location.href = DASHBOARD_FOR_ROLE[role] || '/student-dashboard';
-  };
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -105,40 +94,6 @@ export default function LoginPage() {
         {errorMsg && (
           <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5', fontSize: '12px' }}>
             {errorMsg}
-          </div>
-        )}
-
-        {MOCK_AUTH && (
-          <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(99,102,241,0.06)', border: '1px dashed rgba(99,102,241,0.2)' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary-400)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', textAlign: 'center' }}>
-              Dev only — Mock role
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-              {[
-                { role: 'admin', label: '🔐 Admin' },
-                { role: 'learner', label: '🎓 Learner' },
-                { role: 'mentor', label: '🧑‍⚕️ Mentor' },
-                { role: 'school_coordinator', label: '🏫 Coordinator' },
-              ].map(opt => (
-                <button
-                  key={opt.role}
-                  onClick={() => handleMockLogin(opt.role)}
-                  disabled={isLoading}
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 

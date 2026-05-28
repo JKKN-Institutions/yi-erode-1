@@ -96,22 +96,5 @@ export async function getServerRole() {
     }
   }
 
-  // 2. Dev cookie fallback (mock-auth role picker on /login)
-  const devRole = cookieStore.get('dev_role');
-  if (devRole) {
-    const devUser = cookieStore.get('dev_user');
-    let user = null;
-    if (devUser) {
-      try {
-        user = JSON.parse(decodeURIComponent(devUser.value));
-      } catch {}
-    }
-    return {
-      role: normalizeRole(devRole.value),
-      school_id: cookieStore.get('dev_school_id')?.value || null,
-      user,
-    };
-  }
-
   return { role: null, school_id: null, user: null };
 }
