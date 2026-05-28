@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "./supabase/server";
+import { createClient, createAdminClient } from "./supabase/server";
 import { revalidatePath } from "next/cache";
 import { getServerRole } from "./auth-server";
 
@@ -16,18 +16,24 @@ export async function getStudentData() {
   const supabase = await createClient();
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select(`
-      *,
-      mentor:assigned_mentor_id (
-        id,
-        avatar_url,
-        pseudo_name
-      )
-    `)
+    .select('*')
     .eq('id', auth.user.id)
     .single();
 
   if (error) return { error: error.message };
+
+  if (profile && profile.assigned_mentor_id) {
+    const adminSupabase = await createAdminClient();
+    const { data: mentorData } = await adminSupabase
+      .from('profiles')
+      .select('id, avatar_url, pseudo_name')
+      .eq('id', profile.assigned_mentor_id)
+      .single();
+    profile.mentor = mentorData || null;
+  } else if (profile) {
+    profile.mentor = null;
+  }
+
   return { profile };
 }
 
@@ -64,19 +70,20 @@ export async function chooseMentor(mentorId) {
     return { error: "Unauthorized" };
   }
 
-  const supabase = await createClient();
+  const adminSupabase = await createAdminClient();
   
-  // Verify the mentor exists and is actually a mentor
-  const { data: mentor, error: mentorError } = await supabase
+  // Verify the mentor exists and is actually a mentor using the admin client to bypass RLS
+  const { data: mentor, error: mentorError } = await adminSupabase
     .from('profiles')
     .select('role')
     .eq('id', mentorId)
     .single();
     
-  if (mentorError || mentor.role !== 'mentor') {
+  if (mentorError || !mentor || mentor.role !== 'mentor') {
     return { error: "Invalid mentor selected" };
   }
 
+  const supabase = await createClient();
   const { error } = await supabase
     .from('profiles')
     .update({ 
@@ -124,8 +131,8 @@ export async function getMentorsForStudents() {
     return [];
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const adminSupabase = await createAdminClient();
+  const { data, error } = await adminSupabase
     .from('profiles')
     .select('id, avatar_url, pseudo_name')
     .eq('role', 'mentor');
