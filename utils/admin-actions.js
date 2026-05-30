@@ -17,7 +17,8 @@ export async function getAdminDashboardStats() {
     { count: responsesCount },
     { count: coordinatorsCount },
     { count: totalUsersCount },
-    { count: adminsCount }
+    { count: adminsCount },
+    { count: pendingChatsCount }
   ] = await Promise.all([
     supabase.from('schools').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).in('role', ['learner', 'student']),
@@ -25,7 +26,8 @@ export async function getAdminDashboardStats() {
     supabase.from('feedback').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'school_coordinator'),
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin')
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+    supabase.from('chat_rooms').select('*', { count: 'exact', head: true }).eq('status', 'pending_admin'),
   ]);
 
   return {
@@ -35,7 +37,8 @@ export async function getAdminDashboardStats() {
     responses: responsesCount || 0,
     coordinators: coordinatorsCount || 0,
     totalUsers: totalUsersCount || 0,
-    admins: adminsCount || 0
+    admins: adminsCount || 0,
+    pendingChats: pendingChatsCount || 0,
   };
 }
 

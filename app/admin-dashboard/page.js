@@ -155,6 +155,22 @@ export default function AdminOverviewPage() {
             <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "12px" }}>Secure channel for admin notes</p>
           </div>
         </Link>
+        <Link href="/admin-dashboard/chat-requests" className="card action-card" style={{ display: "flex", alignItems: "center", gap: "16px", textDecoration: "none", position: 'relative' }}>
+          <div className="action-icon" style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}>🗨️</div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: 0, fontSize: '16px' }}>Chat Room Requests</h3>
+            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "12px" }}>Approve learner chat sessions</p>
+          </div>
+          {stats.pendingChats > 0 && (
+            <div style={{
+              position: 'absolute', top: '12px', right: '12px',
+              width: '22px', height: '22px', borderRadius: '50%',
+              background: '#ef4444', color: 'white',
+              fontSize: '11px', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>{stats.pendingChats}</div>
+          )}
+        </Link>
         <Link href="/admin-dashboard/schools-list" className="card action-card" style={{ display: "flex", alignItems: "center", gap: "16px", textDecoration: "none" }}>
           <div className="action-icon" style={{ background: "var(--indigo-glow)", color: "var(--indigo-400)" }}>🏢</div>
           <div>

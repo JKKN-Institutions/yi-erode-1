@@ -39,7 +39,7 @@ export default function SchoolSessionsPage() {
         if (schoolData?.grades && schoolData.grades.length > 0) {
           setSelectedGrade(schoolData.grades[0].toString());
         } else {
-          setSelectedGrade('8');
+          setSelectedGrade('');
         }
       }
     } catch (err) {
@@ -96,8 +96,10 @@ export default function SchoolSessionsPage() {
   }
 
   // Check the status of the currently selected grade in the schedule form
-  const currentGradeStatus = gradeStatuses.find(gs => gs.grade === selectedGrade.toString())?.status || 'registered';
-  const isAssessmentPending = currentGradeStatus === 'registered';
+  const currentGradeStatus = selectedGrade 
+    ? (gradeStatuses.find(gs => gs.grade === selectedGrade.toString())?.status || 'registered')
+    : null;
+  const isAssessmentPending = selectedGrade && currentGradeStatus === 'registered';
 
   const enrolledGrades = school.grades || [];
 
@@ -130,14 +132,32 @@ export default function SchoolSessionsPage() {
                 onChange={(e) => setSelectedGrade(e.target.value)}
                 required
               >
-                {['8', '9', '10', '11', '12'].map(g => (
-                  <option key={g} value={g}>Grade {g}</option>
-                ))}
+                {enrolledGrades.length === 0 ? (
+                  <option value="">No enrolled grades. Please enroll first.</option>
+                ) : (
+                  <>
+                    <option value="" disabled>Select a grade...</option>
+                    {enrolledGrades.map(g => (
+                      <option key={g} value={g.toString()}>Grade {g}</option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 
-            {/* Assessment Intercept Banner */}
-            {isAssessmentPending ? (
+            {!selectedGrade ? (
+              <div style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: 'var(--text-tertiary)',
+                background: 'var(--bg-glass)',
+                borderRadius: '12px',
+                border: '1px solid var(--border-subtle)',
+                marginTop: '10px'
+              }}>
+                Select an enrolled grade above to manage or schedule sessions.
+              </div>
+            ) : isAssessmentPending ? (
               <div style={{
                 background: 'rgba(239, 68, 68, 0.08)',
                 border: '1px solid rgba(239, 68, 68, 0.2)',

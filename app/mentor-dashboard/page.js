@@ -11,6 +11,7 @@ import {
   getMentorProfile,
   updateMentorProfile
 } from "@/utils/mentor-actions";
+import { getPendingMentorRooms, getMentorOpenRooms, openChatRoom, closeChatRoom } from "@/utils/mentor-chat-actions";
 import { createClient } from "@/utils/supabase/client";
 
 export default function MentorDashboard() {
@@ -24,6 +25,8 @@ export default function MentorDashboard() {
   const [interactions, setInteractions] = useState([]);
   const [feedback, setFeedback] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [pendingRooms, setPendingRooms] = useState([]);
+  const [openRooms, setOpenRooms] = useState([]);
 
   const reloadFeedback = async () => {
     if (user?.id) {
@@ -40,18 +43,22 @@ export default function MentorDashboard() {
         setUser(auth.user);
 
         if (auth.user?.id) {
-          const [avail, assignedSchools, chatLog, feedbackData, profileData] = await Promise.all([
+          const [avail, assignedSchools, chatLog, feedbackData, profileData, pendingRoomsData, openRoomsData] = await Promise.all([
             getMentorAvailability(auth.user.id),
             getAssignedSchools(auth.user.id),
             getMentorInteractions(auth.user.id),
             getMentorFeedbackStats(auth.user.id),
-            getMentorProfile(auth.user.id)
+            getMentorProfile(auth.user.id),
+            getPendingMentorRooms(),
+            getMentorOpenRooms(),
           ]);
           setAvailability(avail);
           setSchools(assignedSchools);
           setInteractions(chatLog);
           setFeedback(feedbackData);
           setProfile(profileData);
+          setPendingRooms(pendingRoomsData || []);
+          setOpenRooms(openRoomsData || []);
         }
       } catch (err) {
         console.error("Dashboard Load Error:", err);
@@ -137,7 +144,28 @@ export default function MentorDashboard() {
           {activeTab === 'calendar' && user && <CalendarSection availability={availability} user={user} refresh={() => getMentorAvailability(user.id).then(setAvailability)} />}
           {activeTab === 'schools' && <SchoolsSection schools={schools} />}
           {activeTab === 'feedback' && user && <FeedbackSection feedback={feedback} user={user} schools={schools} onSubmit={reloadFeedback} />}
-          {activeTab === 'chat' && <InteractionsSection interactions={interactions} />}
+          {activeTab === 'chat' && <InteractionsSection
+            interactions={interactions}
+            pendingRooms={pendingRooms}
+            openRooms={openRooms}
+            onOpenRoom={async (roomId) => {
+              const result = await openChatRoom(roomId);
+              if (result.success) {
+                const [p, o] = await Promise.all([getPendingMentorRooms(), getMentorOpenRooms()]);
+                setPendingRooms(p || []);
+                setOpenRooms(o || []);
+              } else alert(result.error);
+            }}
+            onCloseRoom={async (roomId) => {
+              if (!confirm('Close this chat room? The learner will no longer be able to send messages.')) return;
+              const result = await closeChatRoom(roomId);
+              if (result.success) {
+                const [p, o] = await Promise.all([getPendingMentorRooms(), getMentorOpenRooms()]);
+                setPendingRooms(p || []);
+                setOpenRooms(o || []);
+              } else alert(result.error);
+            }}
+          />}
           {activeTab === 'profile' && user && <ProfileSection profile={profile} user={user} onUpdate={async () => { const p = await getMentorProfile(user.id); setProfile(p); }} />}
         </div>
       </div>
@@ -602,37 +630,151 @@ function ProfileSection({ profile, user, onUpdate }) {
 }
 
 /* --- INTERACTIONS SECTION --- */
-function InteractionsSection({ interactions }) {
+function InteractionsSection({ interactions, pendingRooms, openRooms, onOpenRoom, onCloseRoom }) {
+  const [openingId, setOpeningId] = useState(null);
+  const [closingId, setClosingId] = useState(null);
+
+  const handleOpen = async (roomId) => {
+    setOpeningId(roomId);
+    await onOpenRoom(roomId);
+    setOpeningId(null);
+  };
+
+  const handleClose = async (roomId) => {
+    setClosingId(roomId);
+    await onCloseRoom(roomId);
+    setClosingId(null);
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
-          <h3 style={{ fontSize: '20px', fontWeight: 700 }}>Anonymous Interaction Wall</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Questions and messages from learners at your committed schools.</p>
+          <h3 style={{ fontSize: '20px', fontWeight: 700 }}>Chat Room Management</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+            Manage learner chat sessions approved by the admin.
+          </p>
         </div>
         <div className="badge badge-warning">Admin Moderated</div>
       </div>
 
-      {interactions.length === 0 ? (
-        <div style={{ padding: '60px', textAlign: 'center', background: 'var(--bg-elevated)', borderRadius: '16px', color: 'var(--text-tertiary)' }}>
-           No interactions yet. Messages will appear here as learners reach out.
+      {/* PENDING ROOMS — Need mentor to open */}
+      {pendingRooms.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <h4 style={{ fontWeight: 700, fontSize: '15px', color: '#f59e0b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid #f59e0b', borderRadius: '20px', padding: '2px 10px', fontSize: '12px' }}>{pendingRooms.length} Pending</span>
+            Awaiting Your Action
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {pendingRooms.map(room => (
+              <div key={room.id} style={{
+                padding: '20px', borderRadius: '16px',
+                background: 'rgba(245,158,11,0.06)',
+                border: '1px solid rgba(245,158,11,0.4)',
+                display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap'
+              }}>
+                <img
+                  src={room.learner?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(room.learner?.full_name || 'L')}&background=6366f1&color=fff&bold=true`}
+                  alt="Learner"
+                  style={{ width: '44px', height: '44px', borderRadius: '50%' }}
+                />
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '15px' }}>{room.learner?.full_name || 'Learner'}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                    Requested {new Date(room.created_at).toLocaleDateString()} · Admin approved {room.admin_approved_at ? new Date(room.admin_approved_at).toLocaleDateString() : ''}
+                  </div>
+                  {room.learner_message && (
+                    <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                      &ldquo;{room.learner_message}&rdquo;
+                    </div>
+                  )}
+                </div>
+                <button
+                  id={`btn-open-room-${room.id}`}
+                  className="btn btn-primary"
+                  onClick={() => handleOpen(room.id)}
+                  disabled={openingId === room.id}
+                  style={{ padding: '10px 20px', flexShrink: 0 }}
+                >
+                  {openingId === room.id ? 'Opening...' : '🔓 Open Chat Room'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {interactions.map(msg => (
-            <div key={msg.id} style={{ 
-              padding: '20px', borderRadius: '16px 16px 16px 0', background: 'var(--bg-glass)', border: '1px solid var(--border)',
-              maxWidth: '80%', alignSelf: 'flex-start'
-            }}>
-               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary-400)', marginBottom: '8px', textTransform: 'uppercase' }}>
-                 Learner @ {msg.schools?.name}
-               </div>
-               <p style={{ fontSize: '15px', color: 'var(--text-primary)' }}>{msg.message}</p>
-               <div style={{ textAlign: 'right', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
-                 {new Date(msg.created_at).toLocaleString()}
-               </div>
-            </div>
-          ))}
+      )}
+
+      {/* OPEN ROOMS — Active chats */}
+      {openRooms.length > 0 && (
+        <div style={{ marginBottom: '32px' }}>
+          <h4 style={{ fontWeight: 700, fontSize: '15px', color: '#10b981', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid #10b981', borderRadius: '20px', padding: '2px 10px', fontSize: '12px' }}>{openRooms.length} Active</span>
+            Open Chat Sessions
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {openRooms.map(room => (
+              <div key={room.id} style={{
+                padding: '20px', borderRadius: '16px',
+                background: 'rgba(16,185,129,0.05)',
+                border: '1px solid rgba(16,185,129,0.3)',
+                display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap'
+              }}>
+                <img
+                  src={room.learner?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(room.learner?.full_name || 'L')}&background=6366f1&color=fff&bold=true`}
+                  alt="Learner"
+                  style={{ width: '44px', height: '44px', borderRadius: '50%', border: '2px solid #10b981' }}
+                />
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div style={{ fontWeight: 700, fontSize: '15px' }}>{room.learner?.full_name || 'Learner'}</div>
+                  <div style={{ fontSize: '12px', color: '#10b981', marginTop: '2px', fontWeight: 600 }}>
+                    ✅ Chat Open since {room.mentor_opened_at ? new Date(room.mentor_opened_at).toLocaleString() : ''}
+                  </div>
+                </div>
+                <button
+                  id={`btn-close-room-${room.id}`}
+                  onClick={() => handleClose(room.id)}
+                  disabled={closingId === room.id}
+                  style={{
+                    padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+                    background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)',
+                    flexShrink: 0
+                  }}
+                >
+                  {closingId === room.id ? 'Closing...' : '🔒 Close Room'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pendingRooms.length === 0 && openRooms.length === 0 && (
+        <div style={{ padding: '48px', textAlign: 'center', background: 'var(--bg-elevated)', borderRadius: '16px', color: 'var(--text-tertiary)', marginBottom: '24px' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>💬</div>
+          No active chat requests. Learners will appear here once admin approves their requests.
+        </div>
+      )}
+
+      {/* Legacy anonymous interaction wall */}
+      {interactions.length > 0 && (
+        <div>
+          <h4 style={{ fontWeight: 700, marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Anonymous Message Wall</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {interactions.map(msg => (
+              <div key={msg.id} style={{ 
+                padding: '16px', borderRadius: '12px', background: 'var(--bg-glass)', border: '1px solid var(--border)',
+                maxWidth: '80%', alignSelf: 'flex-start'
+              }}>
+                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary-400)', marginBottom: '8px', textTransform: 'uppercase' }}>
+                   Learner @ {msg.schools?.name}
+                 </div>
+                 <p style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0 }}>{msg.message}</p>
+                 <div style={{ textAlign: 'right', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
+                   {new Date(msg.created_at).toLocaleString()}
+                 </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

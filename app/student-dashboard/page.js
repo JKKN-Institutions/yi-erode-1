@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStudentData, chooseMentor, requestMentorChange, chooseSchool, getMentorsForStudents } from "@/utils/student-actions";
+import { getStudentData, chooseMentor, requestMentorChange, chooseSchool, getMentorsForStudents, requestChatRoom, getMyActiveChatRoom } from "@/utils/student-actions";
 import { getSchools } from "@/utils/school-actions";
 import Link from "next/link";
 
@@ -21,6 +21,10 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState(QUOTES[0]);
   const [actionStatus, setActionStatus] = useState(null);
+  const [chatRoom, setChatRoom] = useState(null);
+  const [chatRequestMsg, setChatRequestMsg] = useState("");
+  const [showChatRequestModal, setShowChatRequestModal] = useState(false);
+  const [chatRequesting, setChatRequesting] = useState(false);
 
   useEffect(() => {
     // Pick a random quote on mount
@@ -29,10 +33,11 @@ export default function StudentDashboard() {
 
     async function loadData() {
       try {
-        const [studentRes, mentorsRes, schoolsRes] = await Promise.all([
+        const [studentRes, mentorsRes, schoolsRes, chatRoomRes] = await Promise.all([
           getStudentData(),
           getMentorsForStudents(),
-          getSchools()
+          getSchools(),
+          getMyActiveChatRoom(),
         ]);
         
         if (studentRes.error) {
@@ -42,6 +47,7 @@ export default function StudentDashboard() {
         }
         setMentors(mentorsRes || []);
         setSchools(schoolsRes || []);
+        setChatRoom(chatRoomRes);
       } catch (err) {
         console.error("Dashboard load error:", err);
       } finally {
@@ -93,6 +99,90 @@ export default function StudentDashboard() {
       setActionStatus(`Error: ${result.error}`);
     }
     setTimeout(() => setActionStatus(null), 3000);
+  };
+
+  const handleRequestChatRoom = async () => {
+    if (!data?.assigned_mentor_id) return;
+    setChatRequesting(true);
+    const result = await requestChatRoom(data.assigned_mentor_id, chatRequestMsg);
+    if (result.success) {
+      setChatRoom(result.room);
+      setShowChatRequestModal(false);
+      setChatRequestMsg("");
+      setActionStatus("Chat room request sent! Awaiting admin review.");
+    } else if (result.existing) {
+      setChatRoom(result.existing);
+      setShowChatRequestModal(false);
+      setActionStatus("You already have an active request.");
+    } else {
+      setActionStatus(`Error: ${result.error}`);
+    }
+    setChatRequesting(false);
+    setTimeout(() => setActionStatus(null), 4000);
+  };
+
+  // Render the chat button / status based on chatRoom state
+  const renderChatControl = () => {
+    if (!data?.assigned_mentor_id) return null;
+
+    if (!chatRoom) {
+      return (
+        <button
+          onClick={() => setShowChatRequestModal(true)}
+          className="btn btn-primary btn-sm"
+          style={{ padding: '8px 16px', background: 'var(--gradient-primary)' }}
+          id="btn-request-chat"
+        >
+          💬 Request Chat Session
+        </button>
+      );
+    }
+
+    if (chatRoom.status === 'pending_admin') {
+      return (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          padding: '8px 16px', borderRadius: '20px',
+          background: 'rgba(245, 158, 11, 0.1)', border: '1px solid #f59e0b',
+          fontSize: '13px', fontWeight: 600, color: '#f59e0b'
+        }}>
+          ⏳ Awaiting Admin Review
+        </div>
+      );
+    }
+
+    if (chatRoom.status === 'pending_mentor') {
+      return (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          padding: '8px 16px', borderRadius: '20px',
+          background: 'rgba(99, 102, 241, 0.1)', border: '1px solid var(--primary-400)',
+          fontSize: '13px', fontWeight: 600, color: 'var(--primary-400)'
+        }}>
+          🔔 Approved — Mentor will open your room shortly
+        </div>
+      );
+    }
+
+    if (chatRoom.status === 'open') {
+      return (
+        <Link
+          href={`/student-dashboard/chat/${data.assigned_mentor_id}?room=${chatRoom.id}`}
+          className="btn btn-primary btn-sm"
+          id="btn-enter-chat"
+          style={{
+            padding: '8px 20px',
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            boxShadow: '0 0 16px rgba(16,185,129,0.3)',
+            fontWeight: 700
+          }}
+        >
+          ✅ Enter Chat Room
+        </Link>
+      );
+    }
+
+    return null;
   };
 
   if (loading) {
@@ -249,15 +339,7 @@ export default function StudentDashboard() {
                   <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>Your assigned JKKN mentor</p>
                   
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <Link href={`/student-dashboard/chat/${data.mentor.id}`} className="btn btn-primary btn-sm" style={{ padding: '8px 16px', background: 'var(--gradient-primary)' }}>
-                      💬 Chat Room
-                    </Link>
-                    <a href={`https://wa.me/something`} target="_blank" className="btn btn-secondary btn-sm" style={{ padding: '8px 16px', color: '#10b981', borderColor: '#10b981' }}>
-                      📱 WhatsApp
-                    </a>
-                    <a href={`https://meet.google.com/new`} target="_blank" className="btn btn-secondary btn-sm" style={{ padding: '8px 16px' }}>
-                      🎥 Video Call
-                    </a>
+                    {renderChatControl()}
                   </div>
                 </div>
               </div>
@@ -322,6 +404,67 @@ export default function StudentDashboard() {
         pointerEvents: 'none',
         opacity: 0.5
       }} />
+
+      {/* Chat Request Modal */}
+      {showChatRequestModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
+            borderRadius: '24px', padding: '32px', maxWidth: '480px', width: '100%',
+            animation: 'fadeInUp 0.3s ease-out',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.5)'
+          }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '8px' }}>
+              💬 Request Chat Session
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.6 }}>
+              Your request will go to the admin for review. Once approved, your mentor will open the chat room for you.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                Message (optional) — What would you like to discuss?
+              </label>
+              <textarea
+                id="chat-request-message"
+                className="form-input"
+                placeholder="e.g. I have a question about my session schedule..."
+                value={chatRequestMsg}
+                onChange={e => setChatRequestMsg(e.target.value)}
+                rows={3}
+                maxLength={500}
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+              <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                {chatRequestMsg.length}/500
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                id="btn-submit-chat-request"
+                className="btn btn-primary"
+                onClick={handleRequestChatRoom}
+                disabled={chatRequesting}
+                style={{ flex: 1 }}
+              >
+                {chatRequesting ? 'Sending...' : 'Send Request'}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => { setShowChatRequestModal(false); setChatRequestMsg(''); }}
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
