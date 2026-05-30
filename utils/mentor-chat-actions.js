@@ -23,7 +23,7 @@ export async function getPendingMentorRooms() {
     .from("chat_rooms")
     .select(`
       *,
-      learner:learner_id(id, full_name, avatar_url)
+      learner:learner_id(id, full_name, avatar_url, mentor_change_status, mentor_change_requested_by)
     `)
     .eq("mentor_id", auth.user.id)
     .eq("status", "pending_mentor")
@@ -47,7 +47,7 @@ export async function getMentorOpenRooms() {
     .from("chat_rooms")
     .select(`
       *,
-      learner:learner_id(id, full_name, avatar_url)
+      learner:learner_id(id, full_name, avatar_url, mentor_change_status, mentor_change_requested_by)
     `)
     .eq("mentor_id", auth.user.id)
     .eq("status", "open")
@@ -117,7 +117,7 @@ export async function getMentorAllRooms() {
     .from("chat_rooms")
     .select(`
       *,
-      learner:learner_id(id, full_name, avatar_url)
+      learner:learner_id(id, full_name, avatar_url, mentor_change_status, mentor_change_requested_by)
     `)
     .eq("mentor_id", auth.user.id)
     .order("created_at", { ascending: false });

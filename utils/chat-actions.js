@@ -13,7 +13,7 @@ export async function getChatRoomById(roomId) {
   const adminSupabase = await createAdminClient();
   const { data: room, error } = await adminSupabase
     .from("chat_rooms")
-    .select("*, learner:learner_id(id, full_name, avatar_url), mentor:mentor_id(id, pseudo_name, avatar_url)")
+    .select("*, learner:learner_id(id, full_name, avatar_url, mentor_change_status, mentor_change_requested_by), mentor:mentor_id(id, pseudo_name, avatar_url)")
     .eq("id", roomId)
     .single();
 

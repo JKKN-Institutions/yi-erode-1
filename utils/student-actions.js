@@ -112,6 +112,7 @@ export async function requestMentorChange() {
     .from('profiles')
     .update({ 
       mentor_change_status: 'requested',
+      mentor_change_requested_by: 'learner',
       updated_at: new Date().toISOString()
     })
     .eq('id', auth.user.id);

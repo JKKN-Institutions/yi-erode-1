@@ -120,3 +120,104 @@ export async function getPendingChatRequestCount() {
   if (error) return 0;
   return count || 0;
 }
+
+/**
+ * Get consolidated notifications for admin (chat rooms, mentor changes, bug reports)
+ */
+export async function getAdminNotifications() {
+  await assertAdmin();
+  const adminSupabase = await createAdminClient();
+
+  // 1. Pending chat requests
+  const { data: chatReqs } = await adminSupabase
+    .from("chat_rooms")
+    .select(`
+      *,
+      learner:learner_id(id, full_name, avatar_url, school_id),
+      mentor:mentor_id(id, pseudo_name, avatar_url)
+    `)
+    .eq("status", "pending_admin")
+    .order("created_at", { ascending: false });
+
+  // 2. Mentor change requests (differentiating who requested it)
+  const { data: mentorChangeReqs } = await adminSupabase
+    .from("profiles")
+    .select("id, full_name, avatar_url, assigned_mentor_id, mentor_change_status, mentor_change_requested_by")
+    .eq("mentor_change_status", "requested");
+
+  // Fetch mentor pseudo names for change requests
+  let enrichedChangeReqs = [];
+  if (mentorChangeReqs && mentorChangeReqs.length > 0) {
+    const mentorIds = mentorChangeReqs.map(r => r.assigned_mentor_id).filter(Boolean);
+    const { data: mentors } = await adminSupabase
+      .from("profiles")
+      .select("id, pseudo_name")
+      .in("id", mentorIds);
+
+    const mentorMap = {};
+    mentors?.forEach(m => { mentorMap[m.id] = m.pseudo_name; });
+
+    enrichedChangeReqs = mentorChangeReqs.map(r => ({
+      ...r,
+      mentor_pseudo_name: mentorMap[r.assigned_mentor_id] || "Assigned Mentor"
+    }));
+  }
+
+  // 3. Open bug reports / Support tickets from all users
+  const { data: bugReports } = await adminSupabase
+    .from("bug_reports")
+    .select("*")
+    .eq("status", "open")
+    .order("created_at", { ascending: false });
+
+  return {
+    chatRequests: chatReqs || [],
+    mentorChangeRequests: enrichedChangeReqs || [],
+    bugReports: bugReports || []
+  };
+}
+
+/**
+ * Approve a mentor change request by resetting the learner's assigned mentor
+ */
+export async function approveMentorChangeRequest(profileId) {
+  await assertAdmin();
+  const adminSupabase = await createAdminClient();
+
+  const { error } = await adminSupabase
+    .from("profiles")
+    .update({
+      assigned_mentor_id: null,
+      mentor_change_status: "none",
+      mentor_change_requested_by: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", profileId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin-dashboard");
+  return { success: true };
+}
+
+/**
+ * Quick resolve a support / bug report ticket from the sidebar drawer
+ */
+export async function resolveBugReport(reportId) {
+  await assertAdmin();
+  const adminSupabase = await createAdminClient();
+
+  const { error } = await adminSupabase
+    .from("bug_reports")
+    .update({
+      status: "resolved",
+      resolved_at: new Date().toISOString(),
+      admin_response: "Resolved via Sidebar Quick Action"
+    })
+    .eq("id", reportId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin-dashboard/bug-reports");
+  return { success: true };
+}

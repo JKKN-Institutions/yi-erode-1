@@ -265,3 +265,28 @@ export async function createSession(formData) {
   revalidatePath('/admin-dashboard');
   return { success: true, data };
 }
+
+/**
+ * Request mentor change initiated by mentor
+ */
+export async function requestMentorChangeByMentor(learnerId) {
+  const auth = await getServerRole();
+  if (!auth.user || (auth.role !== 'mentor' && auth.role !== 'admin')) {
+    return { error: "Mentor access required" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('profiles')
+    .update({ 
+      mentor_change_status: 'requested',
+      mentor_change_requested_by: 'mentor',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', learnerId);
+
+  if (error) return { error: error.message };
+  
+  revalidatePath('/mentor-dashboard');
+  return { success: true };
+}

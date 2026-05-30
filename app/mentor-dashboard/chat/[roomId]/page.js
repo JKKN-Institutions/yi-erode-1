@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getChatMessages, sendChatMessage, getChatRoomById } from "@/utils/chat-actions";
 import { closeChatRoom } from "@/utils/mentor-chat-actions";
+import { requestMentorChangeByMentor } from "@/utils/mentor-actions";
 
 export default function MentorChatRoom() {
   const { roomId } = useParams();
@@ -16,6 +17,7 @@ export default function MentorChatRoom() {
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [requestingChange, setRequestingChange] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const messagesEndRef = useRef(null);
   const pollingRef = useRef(null);
@@ -118,6 +120,30 @@ export default function MentorChatRoom() {
     setClosing(false);
   };
 
+  const handleRequestMentorChange = async () => {
+    if (!room?.learner?.id) return;
+    if (!confirm('Are you sure you want to request a mentor change for this learner? The administrator will be notified to assign a new mentor.')) return;
+    setRequestingChange(true);
+    const result = await requestMentorChangeByMentor(room.learner.id);
+    if (result.success) {
+      setRoom(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          learner: {
+            ...prev.learner,
+            mentor_change_status: 'requested',
+            mentor_change_requested_by: 'mentor'
+          }
+        };
+      });
+      alert('Mentor change request submitted successfully!');
+    } else {
+      alert(`Error submitting request: ${result.error}`);
+    }
+    setRequestingChange(false);
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -179,6 +205,41 @@ export default function MentorChatRoom() {
             <div className="live-indicator" style={{ margin: 0 }}>Chat Room Open</div>
           </div>
         </div>
+
+        {learner?.mentor_change_status === 'requested' ? (
+          <span 
+            style={{
+              padding: '8px 14px', borderRadius: '8px', fontWeight: 600, fontSize: '13px',
+              background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.25)',
+              display: 'inline-flex', alignItems: 'center', gap: '4px'
+            }}
+          >
+            ⚠️ Change Pending
+          </span>
+        ) : (
+          <button
+            id="btn-request-change-inside"
+            onClick={handleRequestMentorChange}
+            disabled={requestingChange}
+            style={{
+              padding: '8px 14px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+              background: 'rgba(245, 158, 11, 0.08)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.2)',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              if (!requestingChange) {
+                e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!requestingChange) {
+                e.currentTarget.style.background = 'rgba(245, 158, 11, 0.08)';
+              }
+            }}
+          >
+            {requestingChange ? 'Requesting...' : '⚠️ Request Change'}
+          </button>
+        )}
 
         <button
           id="btn-close-chat-inside"

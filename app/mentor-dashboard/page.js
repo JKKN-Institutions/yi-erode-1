@@ -10,7 +10,8 @@ import {
   getMentorFeedbackStats,
   submitMentorFeedback,
   getMentorProfile,
-  updateMentorProfile
+  updateMentorProfile,
+  requestMentorChangeByMentor
 } from "@/utils/mentor-actions";
 import { getPendingMentorRooms, getMentorOpenRooms, openChatRoom, closeChatRoom } from "@/utils/mentor-chat-actions";
 import { createClient } from "@/utils/supabase/client";
@@ -165,6 +166,14 @@ export default function MentorDashboard() {
                 setPendingRooms(p || []);
                 setOpenRooms(o || []);
               } else alert(result.error);
+            }}
+            onRequestMentorChange={async (learnerId) => {
+              const result = await requestMentorChangeByMentor(learnerId);
+              if (result.success) {
+                const [p, o] = await Promise.all([getPendingMentorRooms(), getMentorOpenRooms()]);
+                setPendingRooms(p || []);
+                setOpenRooms(o || []);
+              } else alert(result.error || "Failed to request mentor change");
             }}
           />}
           {activeTab === 'profile' && user && <ProfileSection profile={profile} user={user} onUpdate={async () => { const p = await getMentorProfile(user.id); setProfile(p); }} />}
@@ -631,9 +640,10 @@ function ProfileSection({ profile, user, onUpdate }) {
 }
 
 /* --- INTERACTIONS SECTION --- */
-function InteractionsSection({ interactions, pendingRooms, openRooms, onOpenRoom, onCloseRoom }) {
+function InteractionsSection({ interactions, pendingRooms, openRooms, onOpenRoom, onCloseRoom, onRequestMentorChange }) {
   const [openingId, setOpeningId] = useState(null);
   const [closingId, setClosingId] = useState(null);
+  const [requestingChangeId, setRequestingChangeId] = useState(null);
 
   const handleOpen = async (roomId) => {
     setOpeningId(roomId);
@@ -645,6 +655,14 @@ function InteractionsSection({ interactions, pendingRooms, openRooms, onOpenRoom
     setClosingId(roomId);
     await onCloseRoom(roomId);
     setClosingId(null);
+  };
+
+  const handleRequestChange = async (learnerId, roomId) => {
+    if (!learnerId) return;
+    if (!confirm('Are you sure you want to request a mentor change for this learner? The administrator will be notified to assign a new mentor.')) return;
+    setRequestingChangeId(roomId);
+    await onRequestMentorChange(learnerId);
+    setRequestingChangeId(null);
   };
 
   return (
@@ -731,7 +749,7 @@ function InteractionsSection({ interactions, pendingRooms, openRooms, onOpenRoom
                     ✅ Chat Open since {room.mentor_opened_at ? new Date(room.mentor_opened_at).toLocaleString() : ''}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
                   <Link
                     id={`btn-enter-room-${room.id}`}
                     href={`/mentor-dashboard/chat/${room.id}`}
@@ -744,6 +762,40 @@ function InteractionsSection({ interactions, pendingRooms, openRooms, onOpenRoom
                   >
                     💬 Enter Chat
                   </Link>
+                  {room.learner?.mentor_change_status === 'requested' ? (
+                    <span 
+                      style={{
+                        padding: '10px 14px', borderRadius: '8px', fontWeight: 600, fontSize: '13px',
+                        background: 'rgba(245, 158, 11, 0.12)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.25)',
+                        display: 'inline-flex', alignItems: 'center', gap: '4px'
+                      }}
+                    >
+                      ⚠️ Change Pending
+                    </span>
+                  ) : (
+                    <button
+                      id={`btn-request-change-${room.id}`}
+                      onClick={() => handleRequestChange(room.learner?.id, room.id)}
+                      disabled={requestingChangeId !== null}
+                      style={{
+                        padding: '10px 14px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+                        background: 'rgba(245, 158, 11, 0.08)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.2)',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => {
+                        if (requestingChangeId === null) {
+                          e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (requestingChangeId === null) {
+                          e.currentTarget.style.background = 'rgba(245, 158, 11, 0.08)';
+                        }
+                      }}
+                    >
+                      {requestingChangeId === room.id ? 'Requesting...' : '⚠️ Request Change'}
+                    </button>
+                  )}
                   <button
                     id={`btn-close-room-${room.id}`}
                     onClick={() => handleClose(room.id)}

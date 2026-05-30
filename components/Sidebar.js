@@ -6,7 +6,14 @@ import { useEffect, useState, useCallback } from 'react'
 import { clearDevRole } from '@/utils/auth'
 import { createClient } from '@/utils/supabase/client'
 import { getAdminDashboardStats } from '@/utils/admin-actions'
-import { getPendingChatRequests, approveChatRequest, rejectChatRequest } from '@/utils/admin-chat-actions'
+import { 
+  getPendingChatRequests, 
+  approveChatRequest, 
+  rejectChatRequest,
+  getAdminNotifications,
+  approveMentorChangeRequest,
+  resolveBugReport
+} from '@/utils/admin-chat-actions'
 
 const adminNav = [
   {
@@ -89,13 +96,13 @@ export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [adminStats, setAdminStats] = useState(null)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
-  const [pendingRequests, setPendingRequests] = useState([])
+  const [notifications, setNotifications] = useState({ chatRequests: [], mentorChangeRequests: [], bugReports: [] })
   const [processingAction, setProcessingAction] = useState(null)
 
   const loadNotifications = useCallback(async () => {
     if (role !== 'admin') return;
-    const reqs = await getPendingChatRequests();
-    setPendingRequests(reqs || []);
+    const data = await getAdminNotifications();
+    setNotifications(data || { chatRequests: [], mentorChangeRequests: [], bugReports: [] });
   }, [role]);
 
   useEffect(() => {
@@ -137,9 +144,9 @@ export default function Sidebar() {
       getAdminDashboardStats().then(stats => {
         if (!cancelled) setAdminStats(stats);
       }).catch(err => console.error("Error loading sidebar stats", err));
-      getPendingChatRequests().then(reqs => {
-        if (!cancelled) setPendingRequests(reqs || []);
-      }).catch(err => console.error("Error loading pending requests", err));
+      getAdminNotifications().then(data => {
+        if (!cancelled) setNotifications(data || { chatRequests: [], mentorChangeRequests: [], bugReports: [] });
+      }).catch(err => console.error("Error loading notifications", err));
     };
 
     fetchStats();
@@ -268,11 +275,11 @@ export default function Sidebar() {
                 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>🔔</span> Chat Requests Sidebar
+                  <span>🔔</span> Notifications Sidebar
                 </span>
-                {adminStats && adminStats.pendingChats > 0 && (
+                {((notifications.chatRequests?.length || 0) + (notifications.mentorChangeRequests?.length || 0) + (notifications.bugReports?.length || 0)) > 0 && (
                   <span className="badge" style={{ background: "#ef4444", color: "white", fontSize: "10px", padding: "2px 6px", borderRadius: "10px", fontWeight: "bold" }}>
-                    {adminStats.pendingChats}
+                    {(notifications.chatRequests?.length || 0) + (notifications.mentorChangeRequests?.length || 0) + (notifications.bugReports?.length || 0)}
                   </span>
                 )}
               </button>
@@ -410,8 +417,8 @@ export default function Sidebar() {
             {/* Drawer Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>🔔 Chat Requests Sidebar</h3>
-                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Grant permission to mentors</span>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>🔔 Notifications Sidebar</h3>
+                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Action center for all users</span>
               </div>
               <button 
                 onClick={() => setIsNotificationsOpen(false)}
@@ -429,106 +436,181 @@ export default function Sidebar() {
             </div>
 
             {/* Scrollable Requests List */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingRight: '4px' }}>
-              {pendingRequests.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🎉</div>
-                  <h4 style={{ margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Pending Requests</h4>
-                  <p style={{ margin: 0, fontSize: '12px' }}>All requests have been handled. Mentors have access.</p>
-                </div>
-              ) : (
-                pendingRequests.map(room => (
-                  <div 
-                    key={room.id}
-                    style={{
-                      background: 'var(--bg-glass)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '12px',
-                      padding: '16px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '12px'
-                    }}
-                  >
-                    {/* User and Mentor Info */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Learner Request</div>
-                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)' }}>
-                        {room.learner?.full_name || 'Unknown'}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '4px' }}>
+              
+              {/* CATEGORY 1: CHAT ROOM REQUESTS */}
+              <div>
+                <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--primary-400)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>💬 Chat Requests</span>
+                  <span className="badge" style={{ fontSize: '10px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-400)' }}>
+                    {notifications.chatRequests?.length || 0}
+                  </span>
+                </h4>
+                {(!notifications.chatRequests || notifications.chatRequests.length === 0) ? (
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', paddingLeft: '8px' }}>
+                    No pending chat requests.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {notifications.chatRequests.map(room => (
+                      <div key={room.id} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>{room.learner?.full_name || 'Learner'}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Assigns JKKN Mentor: <strong style={{ color: 'var(--success-400)' }}>{room.mentor?.pseudo_name}</strong>
+                        </div>
+                        {room.learner_message && (
+                          <div style={{ padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '11.5px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                            "{room.learner_message}"
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={async () => {
+                              setProcessingAction(room.id + '-approve');
+                              const res = await approveChatRequest(room.id);
+                              if (res.success) {
+                                getAdminDashboardStats().then(setAdminStats);
+                                loadNotifications();
+                              } else alert(res.error);
+                              setProcessingAction(null);
+                            }}
+                            disabled={processingAction !== null}
+                            className="btn btn-primary btn-sm"
+                            style={{ flex: 1, padding: '6px 10px', fontSize: '11px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+                          >
+                            {processingAction === room.id + '-approve' ? '...' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Reject this request?')) return;
+                              setProcessingAction(room.id + '-reject');
+                              const res = await rejectChatRequest(room.id);
+                              if (res.success) {
+                                getAdminDashboardStats().then(setAdminStats);
+                                loadNotifications();
+                              } else alert(res.error);
+                              setProcessingAction(null);
+                            }}
+                            disabled={processingAction !== null}
+                            style={{
+                              flex: 1, padding: '6px 10px', fontSize: '11px', borderRadius: '8px', fontWeight: 600,
+                              background: 'rgba(239, 68, 68, 0.08)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.15)', cursor: 'pointer'
+                            }}
+                          >
+                            {processingAction === room.id + '-reject' ? '...' : 'Reject'}
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        Assigned Mentor: <strong style={{ color: 'var(--primary-400)' }}>{room.mentor?.pseudo_name || 'Anonymous'}</strong>
-                      </div>
-                    </div>
-
-                    {/* Learner message */}
-                    {room.learner_message && (
-                      <div style={{
-                        padding: '10px 12px',
-                        background: 'var(--bg-secondary)',
-                        borderLeft: '2px solid var(--primary-400)',
-                        borderRadius: '6px',
-                        fontSize: '12.5px',
-                        color: 'var(--text-secondary)',
-                        fontStyle: 'italic'
-                      }}>
-                        "{room.learner_message}"
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                      <button
-                        onClick={async () => {
-                          setProcessingAction(room.id + '-approve');
-                          const res = await approveChatRequest(room.id);
-                          if (res.success) {
-                            // Update sidebar state immediately
-                            getAdminDashboardStats().then(setAdminStats);
-                            loadNotifications();
-                          } else {
-                            alert(res.error);
-                          }
-                          setProcessingAction(null);
-                        }}
-                        disabled={processingAction !== null}
-                        className="btn btn-primary btn-sm"
-                        style={{ flex: 1, padding: '8px 12px', fontSize: '12px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
-                      >
-                        {processingAction === room.id + '-approve' ? '...' : '✅ Approve'}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!confirm('Reject this request?')) return;
-                          setProcessingAction(room.id + '-reject');
-                          const res = await rejectChatRequest(room.id);
-                          if (res.success) {
-                            getAdminDashboardStats().then(setAdminStats);
-                            loadNotifications();
-                          } else {
-                            alert(res.error);
-                          }
-                          setProcessingAction(null);
-                        }}
-                        disabled={processingAction !== null}
-                        style={{
-                          flex: 1,
-                          padding: '8px 12px',
-                          fontSize: '12px',
-                          borderRadius: '8px',
-                          fontWeight: 600,
-                          background: 'rgba(239, 68, 68, 0.08)',
-                          color: '#f87171',
-                          border: '1px solid rgba(239, 68, 68, 0.15)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {processingAction === room.id + '-reject' ? '...' : '❌ Reject'}
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ))
-              )}
+                )}
+              </div>
+
+              {/* CATEGORY 2: MENTOR CHANGE REQUESTS */}
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: 800, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>⚠️ Mentor Changes</span>
+                  <span className="badge" style={{ fontSize: '10px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24' }}>
+                    {notifications.mentorChangeRequests?.length || 0}
+                  </span>
+                </h4>
+                {(!notifications.mentorChangeRequests || notifications.mentorChangeRequests.length === 0) ? (
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', paddingLeft: '8px' }}>
+                    No pending mentor change requests.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {notifications.mentorChangeRequests.map(req => {
+                      const reqByMentor = req.mentor_change_requested_by === 'mentor';
+                      return (
+                        <div key={req.id} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>{req.full_name || 'Learner'}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            Current Mentor: <strong style={{ color: 'var(--primary-400)' }}>{req.mentor_pseudo_name || 'Anonymous'}</strong>
+                          </div>
+                          <div style={{
+                            padding: '6px 10px',
+                            background: reqByMentor ? 'rgba(245, 158, 11, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: reqByMentor ? '#fbbf24' : 'var(--primary-400)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            alignSelf: 'flex-start'
+                          }}>
+                            {reqByMentor ? '⚠️ Requested by Mentor' : '👤 Requested by Learner'}
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Approve and reset mentor for this student?')) return;
+                              setProcessingAction(req.id + '-mentor-change');
+                              const res = await approveMentorChangeRequest(req.id);
+                              if (res.success) {
+                                loadNotifications();
+                              } else alert(res.error);
+                              setProcessingAction(null);
+                            }}
+                            disabled={processingAction !== null}
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: '8px 12px', fontSize: '11.5px', background: 'var(--warning-500)', border: 'none', width: '100%', marginTop: '4px' }}
+                          >
+                            {processingAction === req.id + '-mentor-change' ? '...' : 'Approve & Reset Mentor'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* CATEGORY 3: BUG & SUPPORT REPORTS */}
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: 800, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>💬 Support Tickets</span>
+                  <span className="badge" style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}>
+                    {notifications.bugReports?.length || 0}
+                  </span>
+                </h4>
+                {(!notifications.bugReports || notifications.bugReports.length === 0) ? (
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', paddingLeft: '8px' }}>
+                    No open support tickets.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {notifications.bugReports.map(report => (
+                      <div key={report.id} style={{ background: 'var(--bg-glass)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>{report.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                          From: <strong>{report.reporter_name}</strong> ({report.reporter_role})
+                        </div>
+                        {report.description && (
+                          <div style={{ padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                            {report.description}
+                          </div>
+                        )}
+                        <button
+                          onClick={async () => {
+                            setProcessingAction(report.id + '-bug-resolve');
+                            const res = await resolveBugReport(report.id);
+                            if (res.success) {
+                              loadNotifications();
+                            } else alert(res.error);
+                            setProcessingAction(null);
+                          }}
+                          disabled={processingAction !== null}
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: '6px 10px', fontSize: '11px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', width: '100%', marginTop: '4px' }}
+                        >
+                          {processingAction === report.id + '-bug-resolve' ? '...' : '✓ Resolve Ticket'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </>
