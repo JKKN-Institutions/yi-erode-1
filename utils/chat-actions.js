@@ -44,7 +44,7 @@ export async function getChatMessages(roomId) {
     .single();
 
   if (roomError) return { error: roomError.message, messages: [] };
-  if (room.status !== "open") return { error: "Room is not open", messages: [] };
+  if (room.status !== "open" && room.status !== "closed") return { error: "Room is not active", messages: [] };
   if (room.learner_id !== auth.user.id && room.mentor_id !== auth.user.id && auth.role !== "admin") {
     return { error: "Access denied", messages: [] };
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { 
   getMentorAvailability, 
   updateMentorAvailability, 
@@ -730,18 +731,31 @@ function InteractionsSection({ interactions, pendingRooms, openRooms, onOpenRoom
                     ✅ Chat Open since {room.mentor_opened_at ? new Date(room.mentor_opened_at).toLocaleString() : ''}
                   </div>
                 </div>
-                <button
-                  id={`btn-close-room-${room.id}`}
-                  onClick={() => handleClose(room.id)}
-                  disabled={closingId === room.id}
-                  style={{
-                    padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
-                    background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)',
-                    flexShrink: 0
-                  }}
-                >
-                  {closingId === room.id ? 'Closing...' : '🔒 Close Room'}
-                </button>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <Link
+                    id={`btn-enter-room-${room.id}`}
+                    href={`/mentor-dashboard/chat/${room.id}`}
+                    className="btn btn-primary"
+                    style={{
+                      padding: '10px 20px', fontSize: '13px', textDecoration: 'none',
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      display: 'inline-flex', alignItems: 'center'
+                    }}
+                  >
+                    💬 Enter Chat
+                  </Link>
+                  <button
+                    id={`btn-close-room-${room.id}`}
+                    onClick={() => handleClose(room.id)}
+                    disabled={closingId === room.id}
+                    style={{
+                      padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+                      background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)'
+                    }}
+                  >
+                    {closingId === room.id ? 'Closing...' : '🔒 Close'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

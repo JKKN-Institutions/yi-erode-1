@@ -28,6 +28,7 @@ const adminNav = [
     section: 'Controls',
     items: [
       { href: '/admin-dashboard/allocations', label: 'Mentor Allocations', icon: '🎯' },
+      { href: '/admin-dashboard/chat-requests', label: 'Chat Requests', icon: '💬' },
       { href: '/admin-dashboard/notes', label: 'Admin Comms', icon: '📋' },
       { href: '/admin-dashboard/bug-reports', label: 'Support & Feedback', icon: '💬' },
       { href: '/admin-dashboard/add-mentor', label: 'Onboard Mentor', icon: '➕' },
@@ -121,10 +122,20 @@ export default function Sidebar() {
   useEffect(() => {
     if (role !== 'admin') return;
     let cancelled = false;
-    getAdminDashboardStats().then(stats => {
-      if (!cancelled) setAdminStats(stats);
-    }).catch(err => console.error("Error loading sidebar stats", err));
-    return () => { cancelled = true; };
+
+    const fetchStats = () => {
+      getAdminDashboardStats().then(stats => {
+        if (!cancelled) setAdminStats(stats);
+      }).catch(err => console.error("Error loading sidebar stats", err));
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000); // poll every 10s
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [role])
 
   if (pathname === '/login' || pathname.startsWith('/auth')) {
@@ -217,6 +228,7 @@ export default function Sidebar() {
                 const isActive = pathname === item.href || 
                   (item.href !== '/admin' && item.href !== '/mentor-dashboard' && item.href !== '/school-dashboard' && pathname.startsWith(item.href))
                 const isSchoolDir = item.href === '/admin-dashboard/schools-list';
+                const isChatRequests = item.href === '/admin-dashboard/chat-requests';
                 return (
                   <Link
                     key={item.href}
@@ -228,6 +240,11 @@ export default function Sidebar() {
                     {isSchoolDir && adminStats && (
                       <span className="badge" style={{ background: "var(--primary-glow)", color: "var(--primary-400)", fontSize: "10px", padding: "2px 6px" }}>
                         {adminStats.coordinators}
+                      </span>
+                    )}
+                    {isChatRequests && adminStats && adminStats.pendingChats > 0 && (
+                      <span className="badge" style={{ background: "#ef4444", color: "white", fontSize: "10px", padding: "2px 6px", borderRadius: "10px", fontWeight: "bold" }}>
+                        {adminStats.pendingChats}
                       </span>
                     )}
                   </Link>

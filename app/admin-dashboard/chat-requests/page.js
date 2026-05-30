@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   getPendingChatRequests,
   getAllChatRooms,
@@ -226,6 +227,20 @@ export default function AdminChatRequestsPage() {
                           {processing === room.id + '-reject' ? '...' : '❌ Reject'}
                         </button>
                       </div>
+                    )}
+
+                    {room.status !== 'pending_admin' && (
+                      <Link
+                        id={`btn-monitor-${room.id}`}
+                        href={`/admin-dashboard/chat-requests/${room.id}`}
+                        className="btn btn-secondary"
+                        style={{
+                          padding: '8px 20px', fontSize: '13px', textDecoration: 'none',
+                          display: 'inline-flex', alignItems: 'center', gap: '6px'
+                        }}
+                      >
+                        👁️ Monitor Chat
+                      </Link>
                     )}
                   </div>
                 </div>
