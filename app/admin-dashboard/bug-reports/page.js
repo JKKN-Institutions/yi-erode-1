@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getAllBugReports, updateBugReportStatus } from "@/utils/bug-report-actions";
+import { diagnoseBug } from "@/utils/ai-diagnostics";
 
 export default function BugReportsPage() {
   const [reports, setReports] = useState([]);
@@ -10,6 +11,24 @@ export default function BugReportsPage() {
   const [respondingTo, setRespondingTo] = useState(null);
   const [response, setResponse] = useState('');
   const [newStatus, setNewStatus] = useState('');
+  const [aiDiagnosis, setAiDiagnosis] = useState({});
+  const [diagnosingId, setDiagnosingId] = useState(null);
+
+  const handleAIDiagnose = async (report) => {
+    setDiagnosingId(report.id);
+    try {
+      const res = await diagnoseBug(report.title, report.description, report.page_url);
+      setAiDiagnosis(prev => ({
+        ...prev,
+        [report.id]: res
+      }));
+    } catch (err) {
+      console.error(err);
+      alert("AI diagnostics failed to run.");
+    } finally {
+      setDiagnosingId(null);
+    }
+  };
 
   async function loadReports() {
     setLoading(true);
@@ -150,7 +169,7 @@ export default function BugReportsPage() {
                 )}
 
                 {/* Action Buttons */}
-                {respondingTo === report.id ? (
+                {respondingTo === report.id && (
                   <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg-glass)', border: '1px solid var(--border)' }}>
                     <div style={{ marginBottom: '12px' }}>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>Update Status</label>
@@ -183,11 +202,118 @@ export default function BugReportsPage() {
                       <button className="btn btn-secondary" onClick={() => { setRespondingTo(null); setResponse(''); setNewStatus(''); }}>Cancel</button>
                     </div>
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                    <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={() => { setRespondingTo(report.id); setNewStatus(report.status); }}>
-                      Respond / Update Status
+                )}
+
+                {/* AI Diagnostics Panel */}
+                {aiDiagnosis[report.id] && (
+                  <div style={{
+                    marginTop: '16px',
+                    padding: '20px',
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, rgba(20, 20, 35, 0.75) 0%, rgba(10, 10, 20, 0.95) 100%)',
+                    border: '1px solid rgba(168, 85, 247, 0.35)',
+                    boxShadow: '0 8px 32px rgba(168, 85, 247, 0.15)',
+                    animation: 'fadeIn 0.3s ease-out',
+                    backdropFilter: 'blur(10px)',
+                    textAlign: 'left'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(168, 85, 247, 0.2)', paddingBottom: '10px' }}>
+                      <span style={{ fontSize: '14.5px', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        🧠 AI Diagnostics: {aiDiagnosis[report.id].title}
+                      </span>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
+                        background: aiDiagnosis[report.id].confidence > 80 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                        color: aiDiagnosis[report.id].confidence > 80 ? '#34d399' : '#fbbf24',
+                        border: aiDiagnosis[report.id].confidence > 80 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(251, 191, 36, 0.3)'
+                      }}>
+                        {aiDiagnosis[report.id].confidence}% Confidence
+                      </span>
+                    </div>
+
+                    <div style={{ marginBottom: '14px' }}>
+                      <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 700, display: 'block', marginBottom: '4px', letterSpacing: '0.5px' }}>Root Cause Analysis</span>
+                      <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                        {aiDiagnosis[report.id].rootCause}
+                      </p>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 700, display: 'block', marginBottom: '4px', letterSpacing: '0.5px' }}>Suggested Fix Steps</span>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                        {aiDiagnosis[report.id].recommendation}
+                      </div>
+                    </div>
+
+                    {aiDiagnosis[report.id].files && aiDiagnosis[report.id].files.length > 0 && (
+                      <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '12px' }}>
+                        <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 700, display: 'block', marginBottom: '8px', letterSpacing: '0.5px' }}>Suggested Files to Inspect</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {aiDiagnosis[report.id].files.map((f, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                              <span style={{ color: '#c084fc' }}>📁</span>
+                              <a 
+                                href={`file://${f.path}`}
+                                style={{ color: 'var(--primary-400)', textDecoration: 'underline', fontWeight: 600 }}
+                              >
+                                {f.path.split('/').pop()}
+                              </a>
+                              <span style={{ color: 'var(--text-tertiary)' }}>— {f.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions Trigger Row */}
+                {respondingTo !== report.id && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ fontSize: '12.5px', padding: '8px 16px' }} 
+                      onClick={() => { setRespondingTo(report.id); setNewStatus(report.status); }}
+                    >
+                      💬 Respond / Update Status
                     </button>
+                    
+                    {!aiDiagnosis[report.id] ? (
+                      <button 
+                        className="btn btn-secondary" 
+                        disabled={diagnosingId !== null}
+                        style={{ 
+                          fontSize: '12.5px', 
+                          padding: '8px 16px',
+                          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
+                          border: '1px solid rgba(168, 85, 247, 0.25)',
+                          color: '#c084fc',
+                          cursor: 'pointer'
+                        }} 
+                        onClick={() => handleAIDiagnose(report)}
+                      >
+                        {diagnosingId === report.id ? '🧠 Analyzing Codebase...' : '✨ Run AI Diagnostics'}
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ 
+                          fontSize: '12.5px', 
+                          padding: '8px 16px',
+                          background: 'rgba(239, 68, 68, 0.05)',
+                          border: '1px solid rgba(239, 68, 68, 0.15)',
+                          color: '#f87171',
+                          cursor: 'pointer'
+                        }} 
+                        onClick={() => setAiDiagnosis(prev => {
+                          const updated = { ...prev };
+                          delete updated[report.id];
+                          return updated;
+                        })}
+                      >
+                        ✕ Close Diagnostics
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

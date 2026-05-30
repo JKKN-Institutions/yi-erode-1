@@ -146,17 +146,39 @@ export default function SchoolSessionsPage() {
             </div>
 
             {!selectedGrade ? (
-              <div style={{
-                padding: '20px',
-                textAlign: 'center',
-                color: 'var(--text-tertiary)',
-                background: 'var(--bg-glass)',
-                borderRadius: '12px',
-                border: '1px solid var(--border-subtle)',
-                marginTop: '10px'
-              }}>
-                Select an enrolled grade above to manage or schedule sessions.
-              </div>
+              enrolledGrades.length === 0 ? (
+                <div style={{
+                  background: 'rgba(251, 191, 36, 0.08)',
+                  border: '1px solid rgba(251, 191, 36, 0.25)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginTop: '10px',
+                  color: '#fbbf24',
+                  fontSize: '13.5px',
+                  lineHeight: '1.6',
+                  textAlign: 'left'
+                }}>
+                  <span style={{ fontWeight: 700, display: 'block', marginBottom: '6px', fontSize: '15px' }}>⚠️ Enrollment Required</span>
+                  You must enroll participating grade levels (e.g. Grade 8, 9, 10) in your School Profile before scheduling sessions.
+                  <div style={{ marginTop: '14px' }}>
+                    <Link href="/school-dashboard" className="btn btn-secondary w-full" style={{ fontSize: '12.5px', padding: '10px', justifyContent: 'center', textDecoration: 'none' }}>
+                      Go to Dashboard to Enroll Grades
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  padding: '20px',
+                  textAlign: 'center',
+                  color: 'var(--text-tertiary)',
+                  background: 'var(--bg-glass)',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border-subtle)',
+                  marginTop: '10px'
+                }}>
+                  Select an enrolled grade above to manage or schedule sessions.
+                </div>
+              )
             ) : isAssessmentPending ? (
               <div style={{
                 background: 'rgba(239, 68, 68, 0.08)',
