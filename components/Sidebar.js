@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { clearDevRole } from '@/utils/auth'
 import { createClient } from '@/utils/supabase/client'
 import { getAdminDashboardStats } from '@/utils/admin-actions'
+import { getPendingChatRequests, approveChatRequest, rejectChatRequest } from '@/utils/admin-chat-actions'
 
 const adminNav = [
   {
@@ -87,6 +88,15 @@ export default function Sidebar() {
   const [user, setUser] = useState(null)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [adminStats, setAdminStats] = useState(null)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [pendingRequests, setPendingRequests] = useState([])
+  const [processingAction, setProcessingAction] = useState(null)
+
+  const loadNotifications = useCallback(async () => {
+    if (role !== 'admin') return;
+    const reqs = await getPendingChatRequests();
+    setPendingRequests(reqs || []);
+  }, [role]);
 
   useEffect(() => {
     // Close sidebar on navigation (mobile)
@@ -127,6 +137,9 @@ export default function Sidebar() {
       getAdminDashboardStats().then(stats => {
         if (!cancelled) setAdminStats(stats);
       }).catch(err => console.error("Error loading sidebar stats", err));
+      getPendingChatRequests().then(reqs => {
+        if (!cancelled) setPendingRequests(reqs || []);
+      }).catch(err => console.error("Error loading pending requests", err));
     };
 
     fetchStats();
@@ -221,6 +234,50 @@ export default function Sidebar() {
         </div>
 
         <nav className="sidebar-nav">
+          {role === 'admin' && (
+            <div style={{ padding: '0 8px 16px 8px' }}>
+              <button
+                id="btn-toggle-notifications"
+                onClick={() => {
+                  setIsNotificationsOpen(true);
+                  loadNotifications();
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-glass)',
+                  color: 'var(--text-primary)',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'all 0.2s',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary-400)';
+                  e.currentTarget.style.background = 'var(--bg-elevated)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                  e.currentTarget.style.background = 'var(--bg-glass)';
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🔔</span> Chat Requests Sidebar
+                </span>
+                {adminStats && adminStats.pendingChats > 0 && (
+                  <span className="badge" style={{ background: "#ef4444", color: "white", fontSize: "10px", padding: "2px 6px", borderRadius: "10px", fontWeight: "bold" }}>
+                    {adminStats.pendingChats}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
           {navItems.map((section) => (
             <div key={section.section}>
               <div className="sidebar-section-label">{section.section}</div>
@@ -315,9 +372,179 @@ export default function Sidebar() {
         </div>
       </aside>
 
+      {/* Right Notifications Drawer (Admin only) */}
+      {isNotificationsOpen && role === 'admin' && (
+        <>
+          {/* Backdrop */}
+          <div 
+            onClick={() => setIsNotificationsOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 1050,
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+          />
+
+          {/* Drawer Panel */}
+          <div 
+            style={{
+              position: 'fixed',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: '420px',
+              maxWidth: '100vw',
+              background: 'var(--bg-card)',
+              borderLeft: '1px solid var(--border-subtle)',
+              boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.25)',
+              zIndex: 1100,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '24px',
+              animation: 'slideInRight 0.3s ease-out'
+            }}
+          >
+            {/* Drawer Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>🔔 Chat Requests Sidebar</h3>
+                <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Grant permission to mentors</span>
+              </div>
+              <button 
+                onClick={() => setIsNotificationsOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-tertiary)',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Requests List */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', paddingRight: '4px' }}>
+              {pendingRequests.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🎉</div>
+                  <h4 style={{ margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Pending Requests</h4>
+                  <p style={{ margin: 0, fontSize: '12px' }}>All requests have been handled. Mentors have access.</p>
+                </div>
+              ) : (
+                pendingRequests.map(room => (
+                  <div 
+                    key={room.id}
+                    style={{
+                      background: 'var(--bg-glass)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    {/* User and Mentor Info */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Learner Request</div>
+                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)' }}>
+                        {room.learner?.full_name || 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        Assigned Mentor: <strong style={{ color: 'var(--primary-400)' }}>{room.mentor?.pseudo_name || 'Anonymous'}</strong>
+                      </div>
+                    </div>
+
+                    {/* Learner message */}
+                    {room.learner_message && (
+                      <div style={{
+                        padding: '10px 12px',
+                        background: 'var(--bg-secondary)',
+                        borderLeft: '2px solid var(--primary-400)',
+                        borderRadius: '6px',
+                        fontSize: '12.5px',
+                        color: 'var(--text-secondary)',
+                        fontStyle: 'italic'
+                      }}>
+                        "{room.learner_message}"
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        onClick={async () => {
+                          setProcessingAction(room.id + '-approve');
+                          const res = await approveChatRequest(room.id);
+                          if (res.success) {
+                            // Update sidebar state immediately
+                            getAdminDashboardStats().then(setAdminStats);
+                            loadNotifications();
+                          } else {
+                            alert(res.error);
+                          }
+                          setProcessingAction(null);
+                        }}
+                        disabled={processingAction !== null}
+                        className="btn btn-primary btn-sm"
+                        style={{ flex: 1, padding: '8px 12px', fontSize: '12px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+                      >
+                        {processingAction === room.id + '-approve' ? '...' : '✅ Approve'}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Reject this request?')) return;
+                          setProcessingAction(room.id + '-reject');
+                          const res = await rejectChatRequest(room.id);
+                          if (res.success) {
+                            getAdminDashboardStats().then(setAdminStats);
+                            loadNotifications();
+                          } else {
+                            alert(res.error);
+                          }
+                          setProcessingAction(null);
+                        }}
+                        disabled={processingAction !== null}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          borderRadius: '8px',
+                          fontWeight: 600,
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          color: '#f87171',
+                          border: '1px solid rgba(239, 68, 68, 0.15)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {processingAction === room.id + '-reject' ? '...' : '❌ Reject'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       <style jsx>{`
         .mobile-only {
           display: none;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
         }
         @media (max-width: 768px) {
           .mobile-only {
