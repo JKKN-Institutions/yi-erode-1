@@ -29,7 +29,6 @@ const adminNav = [
       { href: '/admin-dashboard/schools-process', label: 'School Progress', icon: '📈' },
       { href: '/admin-dashboard/mentors-list', label: 'Mentor Roster', icon: '🧑‍⚕️' },
       { href: '/admin-dashboard/learners-list', label: 'Learner List', icon: '🎓' },
-      { href: '/admin-dashboard/users', label: 'User Roster', icon: '👥' },
     ]
   },
   {
