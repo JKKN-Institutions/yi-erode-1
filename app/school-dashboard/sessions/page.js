@@ -110,6 +110,30 @@ export default function SchoolSessionsPage() {
         <p className="page-subtitle">Schedule sessions for enrolled grades and track progress</p>
       </div>
 
+      {enrolledGrades.length === 0 && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          color: '#f87171',
+          fontSize: '14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={18} />
+            <span><strong>No Enrolled Grades Found:</strong> Please enroll participating grade levels in your School Profile to schedule sessions.</span>
+          </span>
+          <Link href="/school-dashboard" className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '12px', textDecoration: 'none', background: 'rgba(255,255,255,0.05)', color: '#fff' }}>
+            Enroll Grades
+          </Link>
+        </div>
+      )}
+
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1.2fr',

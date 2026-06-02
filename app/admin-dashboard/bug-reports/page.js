@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getAllBugReports, updateBugReportStatus } from "@/utils/bug-report-actions";
+import { getAllBugReports, updateBugReportStatus, assignBugToAntigravity } from "@/utils/bug-report-actions";
 import { diagnoseBug } from "@/utils/ai-diagnostics";
 
 export default function BugReportsPage() {
@@ -27,6 +27,24 @@ export default function BugReportsPage() {
       alert("AI diagnostics failed to run.");
     } finally {
       setDiagnosingId(null);
+    }
+  };
+
+  const handleAssignToAntigravity = async (reportId) => {
+    const confirmed = window.confirm("Are you sure you want to assign this bug to the Antigravity Agent for automated resolution?");
+    if (!confirmed) return;
+
+    try {
+      const result = await assignBugToAntigravity(reportId);
+      if (result.success) {
+        alert("Bug successfully assigned to Antigravity Agent. Run the resolution worker to solve it.");
+        loadReports();
+      } else {
+        alert(`Error assigning bug: ${result.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to assign bug to Antigravity.");
     }
   };
 
@@ -295,24 +313,46 @@ export default function BugReportsPage() {
                         {diagnosingId === report.id ? '🧠 Analyzing Codebase...' : '✨ Run AI Diagnostics'}
                       </button>
                     ) : (
-                      <button 
-                        className="btn btn-secondary" 
-                        style={{ 
-                          fontSize: '12.5px', 
-                          padding: '8px 16px',
-                          background: 'rgba(239, 68, 68, 0.05)',
-                          border: '1px solid rgba(239, 68, 68, 0.15)',
-                          color: '#f87171',
-                          cursor: 'pointer'
-                        }} 
-                        onClick={() => setAiDiagnosis(prev => {
-                          const updated = { ...prev };
-                          delete updated[report.id];
-                          return updated;
-                        })}
-                      >
-                        ✕ Close Diagnostics
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          className="btn btn-secondary" 
+                          style={{ 
+                            fontSize: '12.5px', 
+                            padding: '8px 16px',
+                            background: 'rgba(239, 68, 68, 0.05)',
+                            border: '1px solid rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
+                            cursor: 'pointer'
+                          }} 
+                          onClick={() => setAiDiagnosis(prev => {
+                            const updated = { ...prev };
+                            delete updated[report.id];
+                            return updated;
+                          })}
+                        >
+                          ✕ Close Diagnostics
+                        </button>
+                        {report.status === 'open' && (
+                          <button
+                            className="btn"
+                            style={{
+                              fontSize: '12.5px',
+                              padding: '8px 16px',
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              border: 'none',
+                              color: '#fff',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                            onClick={() => handleAssignToAntigravity(report.id)}
+                          >
+                            🤖 Resolve with Antigravity
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

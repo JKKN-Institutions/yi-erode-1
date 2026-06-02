@@ -82,3 +82,27 @@ export async function updateBugReportStatus(reportId, status, adminResponse) {
   revalidatePath('/admin-dashboard/bug-reports');
   return { success: true };
 }
+
+/**
+ * Assign bug report to Antigravity Agent for resolution (admin only)
+ */
+export async function assignBugToAntigravity(reportId) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('bug_reports')
+    .update({
+      status: 'in_progress',
+      admin_response: 'Assigned to Antigravity Agent for automated resolution. Waiting for agent process...'
+    })
+    .eq('id', reportId);
+
+  if (error) {
+    console.error("Error assigning bug to Antigravity:", error.message);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/admin-dashboard/bug-reports');
+  return { success: true };
+}
+
