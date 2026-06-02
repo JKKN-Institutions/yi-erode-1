@@ -1458,6 +1458,11 @@ tr:last-child td {
    Mobile Flex-Responsive Styling (Device & Width-based)
    ═══════════════════════════════════════════ */
 
+/* Android-specific system font fallback */
+.android {
+  font-family: 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
 /* Helper class optimizations for verified mobile devices */
 .device-mobile {
   -webkit-tap-highlight-color: transparent;
@@ -1470,6 +1475,15 @@ tr:last-child td {
   min-height: 44px; /* Premium mobile touch targets */
 }
 
+/* Fix mobile viewport height shifting due to address bar on Android Chrome & iOS Safari */
+.device-mobile .app-layout {
+  min-height: 100dvh !important;
+}
+
+.device-mobile .sidebar {
+  height: 100dvh !important;
+}
+
 /* Width-based responsive safety rules for all mobile devices */
 @media (max-width: 768px) {
   /* 1. Stack all inline grids to a flexible single-column layout */
@@ -1480,6 +1494,14 @@ tr:last-child td {
     grid-template-columns: 1fr !important;
     grid-template-areas: none !important;
     gap: 16px !important;
+  }
+
+  /* Prevent browser auto-zoom on input focus for mobile devices */
+  .main-content .form-input,
+  .main-content input,
+  .main-content select,
+  .main-content textarea {
+    font-size: 16px !important;
   }
 
   /* 2. Force full-width for stackable items on mobile */

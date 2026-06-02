@@ -15,14 +15,14 @@ export const viewport = {
   maximumScale: 1,
 };
 
-import { getDeviceType } from "@/utils/device-detect";
+import { getDeviceInfo } from "@/utils/device-detect";
 
 export default async function RootLayout({ children }) {
-  const deviceType = await getDeviceType();
+  const deviceInfo = await getDeviceInfo();
 
   return (
-    <html lang="en" className={deviceType}>
-      <body className={`device-${deviceType}`}>
+    <html lang="en" className={`${deviceInfo.type} ${deviceInfo.os}`}>
+      <body className={`device-${deviceInfo.type} os-${deviceInfo.os}`}>
         <ThemeProvider>
           {children}
           <ProfileCompletionModal />
