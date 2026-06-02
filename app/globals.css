@@ -1453,3 +1453,94 @@ tr:last-child td {
   background: var(--border-subtle);
   margin: 24px 0;
 }
+
+/* ═══════════════════════════════════════════
+   Mobile Flex-Responsive Styling (Device & Width-based)
+   ═══════════════════════════════════════════ */
+
+/* Helper class optimizations for verified mobile devices */
+.device-mobile {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.device-mobile button, 
+.device-mobile a, 
+.device-mobile input, 
+.device-mobile select {
+  min-height: 44px; /* Premium mobile touch targets */
+}
+
+/* Width-based responsive safety rules for all mobile devices */
+@media (max-width: 768px) {
+  /* 1. Stack all inline grids to a flexible single-column layout */
+  .main-content div[style*="grid-template-columns"],
+  .main-content div[style*="gridTemplateColumns"],
+  .main-content div[style*="grid-template-areas"],
+  .main-content div[style*="gridTemplateAreas"] {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: none !important;
+    gap: 16px !important;
+  }
+
+  /* 2. Force full-width for stackable items on mobile */
+  .main-content .btn,
+  .main-content button[type="submit"] {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* 3. Handle double-column layouts that use inline flex */
+  .main-content div[style*="display: flex"][style*="flex-direction: row"],
+  .main-content div[style*="display:flex"][style*="flex-direction:row"] {
+    flex-wrap: wrap !important;
+  }
+
+  /* 4. Table responsive scroll wraps */
+  .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 5. Optimization for card components padding */
+  .card, .card-glass, .card-glow-inner {
+    padding: 16px 20px !important;
+    border-radius: var(--radius-lg) !important;
+  }
+
+  /* 6. Page header layout adjustments */
+  .page-header-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .page-header-row > div {
+    width: 100% !important;
+  }
+
+  /* 7. Dialog / Overlay forms layout spacing */
+  .form-group {
+    margin-bottom: 16px !important;
+  }
+}
+
+/* Specific narrow screen optimizations (e.g. small phones) */
+@media (max-width: 480px) {
+  .main-content {
+    padding: 16px 12px !important;
+  }
+
+  .page-title {
+    font-size: 20px !important;
+    letter-spacing: -0.5px !important;
+  }
+
+  .page-subtitle {
+    font-size: 12.5px !important;
+  }
+  
+  .stat-card-value {
+    font-size: 28px !important;
+  }
+}
+
